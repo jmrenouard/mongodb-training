@@ -108,17 +108,151 @@
     # =================================================================
     # 6. Désactivation de l'Échange (Swap)
     # =================================================================
-    - name: "Swap | Désactiver le swap pour la session en cours"
-      ansible.builtin.command: swapoff -a
-      when: ansible_swaptotal_mb > 0
-      tags: swap
+    # - name: "Swap | Désactiver le swap pour la session en cours"
+    #   ansible.builtin.command: swapoff -a
+    #   when: ansible_swaptotal_mb > 0
+    #   tags: swap
 
-    - name: "Swap | Commenter les entrées de swap dans /etc/fstab pour désactivation permanente"
-      ansible.builtin.replace:
-        path: /etc/fstab
-        regexp: '^(.*swap.*)$'
-        replace: '# \1'
-      tags: swap
+    # - name: "Swap | Commenter les entrées de swap dans /etc/fstab pour désactivation permanente"
+    #   ansible.builtin.replace:
+    #     path: /etc/fstab
+    #     regexp: '^(.*swap.*)$'
+    #     replace: '# \1'
+    #   tags: swap
+---
+- name: Configurer et optimiser un serveur pour MongoDB
+  hosts: mongodb
+  vars:
+    # --- Variables à personnaliser ---
+
+    # Spécifiez le nom du disque SSD (ex: sda, sdb, nvme0n1).
+    # Laissez cette variable vide ("") si vous ne souhaitez pas configurer le planificateur de disque.
+    ssd_device_name: "sda"
+
+    # Valeur pour le TCP Keepalive en secondes.
+    tcp_keepalive_time_value: 120
+
+    # Utilisateur pour lequel les limites ulimit sont appliquées.
+    ulimit_user: "mongod"
+
+  handlers:
+    - name: Mettre à jour Grub
+      ansible.builtin.command: update-grub
+      listen: "update grub"
+
+  tasks:
+    # =================================================================
+    # 1. Synchronisation des Horloges (NTP)
+    # =================================================================
+    - name: "NTP | Assurer que le paquet NTP est installé"
+      ansible.builtin.apt:
+        name: ntp
+        state: present
+        update_cache: yes
+      tags: ntp
+
+    - name: "NTP | Assurer que le service NTP est démarré et activé"
+      ansible.builtin.service:
+        name: ntp
+        state: started
+        enabled: yes
+      tags: ntp
+
+    # =================================================================
+    # 2. Configuration des Disques SSD
+    # =================================================================
+    - name: "Disque | Définir le planificateur I/O sur 'noop' pour les disques SSD"
+      ansible.builtin.shell: "echo noop > /sys/block/{{ ssd_device_name }}/queue/scheduler"
+      args:
+        # Cette commande change un fichier qui n'existe pas avant le boot,
+        # donc on ne peut pas vérifier sa présence avant.
+        # Le changement n'est pas idempotent par nature, mais sans danger à ré-exécuter.
+        warn: false
+      when: ssd_device_name is defined and ssd_device_name != ""
+      tags: disk
+
+    # =================================================================
+    # 3. Désactivation de NUMA
+    # =================================================================
+    - name: "NUMA | Désactiver NUMA dans la configuration de Grub"
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^(GRUB_CMDLINE_LINUX_DEFAULT=.*)(")$'
+        line: '\1 numa=off"'
+        backrefs: yes
+        state: present
+      notify: "update grub"
+      tags: numa
+
+    # =================================================================
+    # 4. Ajustement des Valeurs ulimit
+    # =================================================================
+    - name: "ulimit | Augmenter la limite de fichiers ouverts (nofile) pour l'utilisateur {{ ulimit_user }}"
+      ansible.builtin.pam_limits:
+        domain: "{{ ulimit_user }}"
+        limit_type: "{{ item.type }}"
+        limit_item: nofile
+        value: 64000
+      with_items:
+        - { type: 'soft' }
+        - { type: 'hard' }
+      tags: ulimit
+
+    - name: "ulimit | Augmenter la limite de processus (nproc) pour l'utilisateur {{ ulimit_user }}"
+      ansible.builtin.pam_limits:
+        domain: "{{ ulimit_user }}"
+        limit_type: "{{ item.type }}"
+        limit_item: nproc
+        value: 64000
+      with_items:
+        - { type: 'soft' }
+        - { type: 'hard' }
+      tags: ulimit
+
+    # =================================================================
+    # 5. Configuration des Paramètres du Noyau (sysctl)
+    # =================================================================
+    - name: "Kernel | Appliquer les paramètres optimisés du noyau via sysctl"
+      ansible.builtin.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_file: /etc/sysctl.conf
+        state: present
+        reload: yes
+      with_items:
+        - { key: 'fs.file-max', value: '98000' }
+        - { key: 'kernel.pid_max', value: '64000' }
+        - { key: 'kernel.threads-max', value: '64000' }
+        - { key: 'vm.max_map_count', value: '131060' }
+        - { key: 'vm.swappiness', value: '5' }
+      tags: kernel
+
+    # =================================================================
+    # 6. Désactivation de l'Échange (Swap)
+    # =================================================================
+    # - name: "Swap | Désactiver le swap pour la session en cours"
+    #   ansible.builtin.command: swapoff -a
+    #   when: ansible_swaptotal_mb > 0
+    #   tags: swap
+
+    # - name: "Swap | Commenter les entrées de swap dans /etc/fstab pour désactivation permanente"
+    #   ansible.builtin.replace:
+    #     path: /etc/fstab
+    #     regexp: '^(.*swap.*)$'
+    #     replace: '# \1'
+    #   tags: swap
+
+    # =================================================================
+    # 7. Configuration du TCP Keepalive
+    # =================================================================
+    - name: "TCP | Configurer le TCP Keepalive"
+      ansible.builtin.sysctl:
+        name: net.ipv4.tcp_keepalive_time
+        value: "{{ tcp_keepalive_time_value }}"
+        sysctl_file: /etc/sysctl.conf
+        state: present
+        reload: yes
+      tags: tcp
 
     # =================================================================
     # 7. Configuration du TCP Keepalive
