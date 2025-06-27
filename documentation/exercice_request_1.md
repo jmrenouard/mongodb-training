@@ -64,12 +64,21 @@ Voici un comparatif structuré entre le langage SQL et les requêtes MongoDB, co
 Ce comparatif met en avant la simplicité de SQL pour les opérations relationnelles et la puissance de MongoDB pour les requêtes simples sur des documents, tout en soulignant les limites de chaque approche selon le contexte d’utilisation.
 
 [1] https://www.enterprisedb.com/blog/comparison-joins-mongodb-vs-postgresql
+
 [2] https://studio3t.com/fr/knowledge-base/articles/mongodb-aggregation-framework/
+
 [3] https://rtavenar.github.io/mongo_book/content/05_agreg.html
+
 [4] https://www.linkedin.com/pulse/mongodb-aggregation-framework-t-sql-pros-2-project-operator-finch
+
 [5] https://studio3t.com/knowledge-base/articles/mongodb-aggregation-framework/
+
 [6] https://studio3t.com/knowledge-base/articles/sql-query/
+
 [7] https://www.mongodb.com/developer/products/mongodb/sql-to-aggregation-pipeline/
+
 [8] https://www.mongodb.com/docs/manual/reference/sql-comparison/
+
 [9] https://stackoverflow.com/questions/23116330/mongodb-select-count-group-by
+
 [10] https://kinsta.com/fr/blog/mongodb-vs-mysql/
