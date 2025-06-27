@@ -1,6 +1,6 @@
 Voici la mise à jour du fichier `install_mongodb_ubuntu.md` incluant la description des packages MongoDB Community Edition :
 
-```markdown
+
 # Installation de MongoDB Community Edition sur Ubuntu
 
 ## Vue d'ensemble
