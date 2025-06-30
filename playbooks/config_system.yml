@@ -109,7 +109,7 @@
         - { key: 'net.core.somaxconn', value: '4096' }
         - { key: 'net.ipv4.tcp_fin_timeout', value: '30' }
         - { key: 'net.ipv4.tcp_keepalive_intvl', value: '30' }
-        - { key: 'net.ipv4.tcp_keepalive_time', value: tcp_keepalive_time_value }
+        - { key: 'net.ipv4.tcp_keepalive_time', value: "{{ tcp_keepalive_time_value }}" }
         - { key: 'net.ipv4.tcp_max_syn_backlog', value: '4096' }
         - { key: 'vm.swappiness', value: '1' }
       tags: kernel
