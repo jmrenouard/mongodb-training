@@ -127,8 +127,9 @@ systemLog:
 
 storage:
   dbPath: ${DB_PATH}
-  journal:
-    enabled: true
+  # La journalisation est activée par défaut depuis MongoDB 3.0 et cette option n'est plus nécessaire.
+  # journal:
+  #   enabled: true 
 
 processManagement:
   fork: false
@@ -180,4 +181,3 @@ echo ""
 echo "--- Initialisation de l'instance ${INSTANCE_NAME} terminée ! ---"
 echo "Vous pouvez vous connecter avec : mongosh --port ${PORT}"
 echo "N'oubliez pas de configurer un pare-feu si l'instance est exposée sur le réseau."
-echo "Pour plus d'informations sur les outils, consultez la documentation MongoDB."
