@@ -139,7 +139,7 @@ net:
   port: ${PORT}
   bindIp: 0.0.0.0 # Écoute sur toutes les interfaces réseau
 
-security:
+#security:
   # Décommenter la ligne ci-dessous pour activer l'authentification
   # authorization: enabled 
 
