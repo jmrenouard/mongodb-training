@@ -63,6 +63,10 @@ After=network.target
 User=mongodb
 Group=mongodb
 
+# Commande ExecStartPre pour nettoyer le fichier de socket si une instance précédente a planté.
+# Le port est calculé à partir du nom de l'instance (ex: instance1 -> 27017)
+ExecStartPre=/bin/sh -c 'rm -f /tmp/mongodb-$(expr 27016 + $(echo %i | sed "s/instance//")).sock'
+
 # Le chemin vers l'exécutable mongod
 ExecStart=/usr/bin/mongod --config /etc/mongod/%i.conf
 
