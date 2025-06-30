@@ -108,6 +108,8 @@
     # =================================================================
     # 5. Configuration des Paramètres du Noyau (sysctl)
     # =================================================================
+    # https://www.kernel.org/doc/html/v5.15/admin-guide/kernel-parameters.html
+    # https://www.kernel.org/doc/html/v5.15/networking/ip-sysctl.html
     - name: "Kernel | Appliquer les paramètres optimisés du noyau via sysctl"
       ansible.builtin.sysctl:
         name: "{{ item.key }}"
@@ -142,3 +144,44 @@
     #     regexp: '^(.*swap.*)$'
     #     replace: '# \1'
     #   tags: swap
+  
+  # desactivation des regles firewall
+    - name: "Firewall | Désactiver les règles de firewall pour MongoDB"
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 27017
+        jump: ACCEPT
+      tags: firewall
+
+    - name: "Firewall | Désactiver les règles de firewall pour le port 28017"
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 28017
+        jump: ACCEPT
+      tags: firewall
+
+    - name: "Firewall | Désactiver les règles de firewall pour le port 27018"
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 27018
+        jump: ACCEPT
+      tags: firewall
+    - name: "Firewall | Désactiver les règles de firewall pour le port 27019"
+      ansible.builtin.iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 27019
+        jump: ACCEPT
+      tags: firewall  
+
+      # desactivation pour SSH
+      - name: "Firewall | Désactiver les règles de firewall pour SSH"
+        ansible.builtin.iptables:
+          chain: INPUT
+          protocol: tcp
+          destination_port: 22
+          jump: ACCEPT
+        tags: firewall
