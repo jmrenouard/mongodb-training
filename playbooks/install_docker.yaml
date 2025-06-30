@@ -1,7 +1,6 @@
 ---
 - name: Installer Docker Engine sur Ubuntu
-  hosts: your_ubuntu_servers # Remplacez par votre groupe d'hôtes ou l'adresse IP de votre serveur
-  become: yes # Exécuter les tâches avec les privilèges sudo
+  hosts: "{{ target | default('all') }}"
 
   tasks:
     - name: Désinstaller les anciennes versions de Docker (si elles existent)
