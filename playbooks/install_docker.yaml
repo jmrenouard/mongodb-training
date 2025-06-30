@@ -1,0 +1,91 @@
+---
+- name: Installer Docker Engine sur Ubuntu
+  hosts: your_ubuntu_servers # Remplacez par votre groupe d'hôtes ou l'adresse IP de votre serveur
+  become: yes # Exécuter les tâches avec les privilèges sudo
+
+  tasks:
+    - name: Désinstaller les anciennes versions de Docker (si elles existent)
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - docker
+        - docker-engine
+        - docker.io
+        - containerd
+        - runc
+        - docker-compose
+        - podman-docker
+      ignore_errors: yes # Ignorer les erreurs si les paquets ne sont pas présents
+
+    - name: Installer les paquets nécessaires pour le dépôt Apt
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - software-properties-common
+
+    - name: Ajouter la clé GPG officielle de Docker
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+        keyring: /usr/share/keyrings/docker-archive-keyring.gpg # Spécifier le chemin du trousseau de clés
+
+    - name: Ajouter le dépôt stable de Docker Apt
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ ansible_architecture }} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+        update_cache: yes
+
+    - name: Installer Docker Engine, CLI, containerd et plugins
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+
+    - name: Ajouter l'utilisateur actuel au groupe 'docker' (pour exécuter docker sans sudo)
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+      # Le message ci-dessous est important car l'utilisateur doit se reconnecter pour que les changements de groupe prennent effet
+      # Cela ne peut pas être géré directement par Ansible pour la session courante.
+      register: user_added_to_docker_group
+
+    - name: Indiquer à l'utilisateur de se reconnecter
+      ansible.builtin.debug:
+        msg: "L'utilisateur '{{ ansible_user_id }}' a été ajouté au groupe 'docker'. Veuillez vous déconnecter et vous reconnecter pour que les changements prennent effet."
+      when: user_added_to_docker_group.changed
+
+    - name: Vérifier l'installation de Docker en exécutant 'hello-world'
+      ansible.builtin.command: docker run hello-world
+      register: docker_hello_world_output
+      changed_when: false # Cette commande ne change pas l'état du système
+      ignore_errors: yes # Permettre à cette tâche d'échouer sans arrêter le playbook si docker n'est pas encore accessible sans sudo
+
+    - name: Afficher le résultat de la vérification 'hello-world'
+      ansible.builtin.debug:
+        var: docker_hello_world_output.stdout_lines
+      when: docker_hello_world_output.stdout is defined and docker_hello_world_output.stdout | length > 0
+
+    - name: Afficher l'état du service Docker
+      ansible.builtin.systemd_service:
+        name: docker
+        state: started
+        enabled: yes
+      register: docker_service_status
+
+    - name: Afficher le statut du service Docker
+      ansible.builtin.debug:
+        msg: "Le service Docker est {{ docker_service_status.status.ActiveState }}."
