@@ -1,0 +1,33 @@
+- name: Configurer le swap Linux
+  hosts: "{{ target|default('all') }}"
+  tasks:
+    - name: "Créer un fichier de swap de 1 Go"
+      ansible.builtin.command: fallocate -l 3G /swapfile
+      args:
+        creates: /swapfile
+      tags: swap
+
+    - name: "Définir les permissions du fichier de swap"
+      ansible.builtin.file:
+        path: /swapfile
+        state: touch
+        mode: '0600'
+      tags: swap
+
+    - name: "Activer le fichier de swap"
+      ansible.builtin.command: mkswap /swapfile
+      args:
+        creates: /swapfile
+      tags: swap
+
+    - name: "Activer le swap"
+      ansible.builtin.command: swapon /swapfile
+      args:
+        creates: /proc/swaps
+
+    - name: "Ajouter le swap au fichier fstab"
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "/swapfile none swap sw 0 0"
+        state: present
+      tags: swap

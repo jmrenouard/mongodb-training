@@ -1,5 +1,5 @@
 - name: Configurer et optimiser un serveur MongoDB serveur / Mongos / Mongo shel
-  hosts: "{{ target|default('all') }}"
+  hosts: "{{ target|default('dbsrv') }}"
   #vars:
 
   tasks:
@@ -53,15 +53,15 @@
         name: mongod
         state: started
         enabled: yes
-      tags: mongodb
+      tags: service
       
     - name: "MongoDB | Vérifier l'état du service"
       ansible.builtin.command: systemctl status mongod
       register: mongod_status
       changed_when: false
-      tags: mongodb
+      tags: service
       
     - name: "MongoDB | Afficher l'état du service"
       ansible.builtin.debug:
         var: mongod_status.stdout_lines
-      tags: mongodb
+      tags: service
