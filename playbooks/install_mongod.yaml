@@ -8,6 +8,9 @@
         name:
           - gnupg
           - curl
+          - locate
+          - htop
+          - iftop
         state: present
         update_cache: yes
       tags: mongodb
@@ -28,15 +31,21 @@
 
     # =================================================================
     # 2. Installation de MongoDB
-    # =================================================================
-    
+  
+    - name: "Remove binaires"
+      apt:
+        name: "mongodb-org*"
+        state: absent
+      tags: mongodb
+
     - name: "MongoDB | Ajouter le référentiel MongoDB"
       ansible.builtin.apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/8.0 multiverse"
+        repo: "deb [ arch=amd64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse"
         state: present
         update_cache: yes
       tags: mongodb
-      
+
+    
     - name: "MongoDB | Installer MongoDB"
       ansible.builtin.apt:
         name:
