@@ -138,8 +138,9 @@ net:
   port: ${PORT}
   bindIp: 0.0.0.0 # Écoute sur toutes les interfaces réseau
 
-# security:
-#   authorization: enabled # Décommenter pour activer l'authentification
+security:
+  # Décommenter la ligne ci-dessous pour activer l'authentification
+  # authorization: enabled 
 
 # operationProfiling:
 #   mode: slowOp
@@ -179,4 +180,4 @@ echo ""
 echo "--- Initialisation de l'instance ${INSTANCE_NAME} terminée ! ---"
 echo "Vous pouvez vous connecter avec : mongosh --port ${PORT}"
 echo "N'oubliez pas de configurer un pare-feu si l'instance est exposée sur le réseau."
-
+echo "Pour plus d'informations sur les outils, consultez la documentation MongoDB."
