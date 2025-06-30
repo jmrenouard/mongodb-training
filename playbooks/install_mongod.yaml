@@ -37,6 +37,7 @@
         name: "mongodb-org*"
         state: absent
       tags: mongodb
+      fail_when: false
 
     - name: "MongoDB | Ajouter le référentiel MongoDB"
       ansible.builtin.apt_repository:
