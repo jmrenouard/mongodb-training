@@ -24,20 +24,34 @@
 
   tasks:
     # =================================================================
-    # 1. Synchronisation des Horloges (NTP)
+    # 1. Synchronisation des Horloges (NTP/Chrony)
     # =================================================================
-    - name: "NTP | Assurer que le paquet NTP est installé"
+    - name: "NTP | Assurer que les paquets de synchronisation d'horloge sont installés"
       ansible.builtin.apt:
-        name: ntp
+        name: "{{ item }}"
         state: present
         update_cache: yes
+      loop:
+        - ntpstat
+        - chrony
       tags: ntp
 
-    - name: "NTP | Assurer que le service NTP est démarré et activé"
+    - name: "NTP | Assurer que le service Chrony est démarré et activé"
       ansible.builtin.service:
-        name: ntp
+        name: chronyd
         state: started
         enabled: yes
+      tags: ntp
+
+    - name: "NTP | Vérifier l'état de la synchronisation temporelle"
+      ansible.builtin.command: timedatectl status
+      register: timedatectl_result
+      changed_when: false
+      tags: ntp
+
+    - name: "NTP | Afficher l'état de la synchronisation temporelle"
+      ansible.builtin.debug:
+        var: timedatectl_result.stdout_lines
       tags: ntp
 
     # =================================================================
