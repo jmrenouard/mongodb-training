@@ -1,4 +1,6 @@
-Voici une procédure détaillée pour mettre en place un cluster MongoDB shardé sur trois serveurs (192.168.56.191, 192.168.56.192, 192.168.56.193), nommés dbsrv1, dbsrv2, dbsrv3. Cette architecture suppose que chaque serveur peut héberger plusieurs rôles (configuration, shard, routeur), mais pour une installation de production robuste, il est recommandé de séparer les rôles sur des machines distinctes ou de prévoir la réplication des serveurs de configuration[1][2].
+Voici une procédure détaillée pour mettre en place un cluster MongoDB shardé sur trois serveurs (192.168.56.191, 192.168.56.192, 192.168.56.193), nommés dbsrv1, dbsrv2, dbsrv3. 
+
+Cette architecture suppose que chaque serveur peut héberger plusieurs rôles (configuration, shard, routeur), mais pour une installation de production robuste, il est recommandé de séparer les rôles sur des machines distinctes ou de prévoir la réplication des serveurs de configuration[1][2].
 
 ## 1️⃣ Préparation des serveurs
 
