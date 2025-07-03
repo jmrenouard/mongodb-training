@@ -2,28 +2,26 @@
 
 # Nom du script : generate_mongodb_users.sh
 # Description : Installe pwgen, génère un mot de passe unique pour chaque utilisateur,
-#               et affiche les commandes mongosh pour créer des utilisateurs
-#               (ReadOnly, ReadWrite, Owner) pour une DB, puis une synthèse finale.
-#               Optionnellement, exporte les détails des utilisateurs dans un fichier JSON.
-# Utilisation : bash ./generate_mongodb_users.sh <NOM_DE_LA_BASE_DE_DONNEES> [<PORT_MONGODB>] [<FICHIER_SORTIE_JSON>]
-# Exemple : bash ./generate_mongodb_users.sh myappdb 27017
-# Exemple avec fichier JSON : bash ./generate_mongodb_users.sh myappdb 27017 /tmp/myappdb_users.json
+#               et écrit les commandes mongosh pour créer des utilisateurs
+#               (ReadOnly, ReadWrite, Owner) pour une DB dans un fichier.
+# Utilisation : bash ./generate_mongodb_users.sh <NOM_DE_LA_BASE_DE_DONNEES> [<PORT_MONGODB>] <FICHIER_SORTIE_COMMANDES>
+# Exemple : bash ./generate_mongodb_users.sh myappdb 27017 /tmp/create_users_myappdb.js
 #           Si le port n'est pas spécifié, 27017 sera utilisé par défaut.
 
 DB_NAME="$1"
 MONGO_PORT="${2:-27017}" # Utilise 27017 par défaut si non spécifié
-JSON_OUTPUT_FILE="$3"    # Fichier de sortie JSON optionnel
+COMMANDS_OUTPUT_FILE="$3" # Fichier de sortie des commandes mongosh
 
-# --- Vérification de l'argument de la base de données ---
-if [ -z "$DB_NAME" ]; then
-  echo "Usage: bash $0 <NOM_DE_LA_BASE_DE_DONNEES> [<PORT_MONGODB>] [<FICHIER_SORTIE_JSON>]"
-  echo "Exemple : bash $0 myappdb 27017"
-  echo "Exemple avec fichier JSON : bash $0 myappdb 27017 /tmp/myappdb_users.json"
+# --- Vérification des arguments ---
+if [ -z "$DB_NAME" ] || [ -z "$COMMANDS_OUTPUT_FILE" ]; then
+  echo "Usage: bash $0 <NOM_DE_LA_BASE_DE_DONNEES> [<PORT_MONGODB>] <FICHIER_SORTIE_COMMANDES>"
+  echo "Exemple : bash $0 myappdb 27017 /tmp/create_users_myappdb.js"
   exit 1
 fi
 
 echo "--- Préparation pour la création d'utilisateurs MongoDB pour la DB : ${DB_NAME} ---"
 echo "Port MongoDB ciblé : ${MONGO_PORT}"
+echo "Les commandes mongosh seront écrites dans : ${COMMANDS_OUTPUT_FILE}"
 
 # --- 1. Installation de pwgen si nécessaire ---
 if ! command -v pwgen &> /dev/null; then
@@ -63,20 +61,18 @@ USER_READONLY="${DB_NAME}ReadOnly"
 USER_READWRITE="${DB_NAME}ReadWrite"
 USER_OWNER="${DB_NAME}Owner"
 
-echo "--- Commandes mongosh pour créer les utilisateurs ---"
-echo "Ces commandes doivent être exécutées dans un shell mongosh connecté à l'instance MongoDB"
-echo "avec un utilisateur ayant les privilèges suffisants (ex: root ou userAdminAnyDatabase)."
-echo ""
-echo "Pour vous connecter au shell mongosh (si l'authentification est activée, utilisez un admin) :"
-echo "mongosh --port ${MONGO_PORT} -u <admin_user> -p <admin_password> --authenticationDatabase admin"
-echo "ou si l'authentification n'est pas encore activée (pour le premier admin) :"
-echo "mongosh --port ${MONGO_PORT}"
-echo ""
-echo "--- Copiez et collez les commandes suivantes dans votre shell mongosh ---"
-echo ""
+echo "--- Écriture des commandes mongosh dans le fichier ${COMMANDS_OUTPUT_FILE} ---"
+
+# Initialiser le fichier de commandes
+echo "// Commandes mongosh pour créer les utilisateurs de la base de données '${DB_NAME}'" > "${COMMANDS_OUTPUT_FILE}"
+echo "// Généré par generate_mongodb_users.sh le $(date)" >> "${COMMANDS_OUTPUT_FILE}"
+echo "// Mot de passe ReadOnly: ${PASSWORD_READONLY}" >> "${COMMANDS_OUTPUT_FILE}"
+echo "// Mot de passe ReadWrite: ${PASSWORD_READWRITE}" >> "${COMMANDS_OUTPUT_FILE}"
+echo "// Mot de passe Owner: ${PASSWORD_OWNER}" >> "${COMMANDS_OUTPUT_FILE}"
+echo "" >> "${COMMANDS_OUTPUT_FILE}"
 
 # Commande pour l'utilisateur ReadOnly
-cat <<EOF
+cat <<EOF >> "${COMMANDS_OUTPUT_FILE}"
 use ${DB_NAME}
 db.createUser(
   {
@@ -87,10 +83,11 @@ db.createUser(
 )
 EOF
 
-echo ""
+# Ajouter une ligne vide pour la lisibilité
+echo "" >> "${COMMANDS_OUTPUT_FILE}"
 
 # Commande pour l'utilisateur ReadWrite
-cat <<EOF
+cat <<EOF >> "${COMMANDS_OUTPUT_FILE}"
 use ${DB_NAME}
 db.createUser(
   {
@@ -101,10 +98,11 @@ db.createUser(
 )
 EOF
 
-echo ""
+# Ajouter une ligne vide pour la lisibilité
+echo "" >> "${COMMANDS_OUTPUT_FILE}"
 
 # Commande pour l'utilisateur Owner
-cat <<EOF
+cat <<EOF >> "${COMMANDS_OUTPUT_FILE}"
 use ${DB_NAME}
 db.createUser(
   {
@@ -116,7 +114,7 @@ db.createUser(
 EOF
 
 echo ""
-echo "--- Fin des commandes de création d'utilisateurs ---"
+echo "Fichier de commandes mongosh créé avec succès : ${COMMANDS_OUTPUT_FILE}"
 echo ""
 
 # --- 4. Synthèse des utilisateurs créés ---
@@ -128,40 +126,8 @@ printf "%-25s | %-15s | %s\n" "${USER_READONLY}" "read" "${PASSWORD_READONLY}"
 printf "%-25s | %-15s | %s\n" "${USER_READWRITE}" "readWrite" "${PASSWORD_READWRITE}"
 printf "%-25s | %-15s | %s\n" "${USER_OWNER}" "dbOwner" "${PASSWORD_OWNER}"
 echo ""
+echo "Pour exécuter ces commandes, connectez-vous à votre instance MongoDB avec un utilisateur administrateur, puis chargez le fichier :"
+echo "  mongosh --port ${MONGO_PORT} -u <admin_user> -p <admin_password> --authenticationDatabase admin --file ${COMMANDS_OUTPUT_FILE}"
+echo ""
 echo "N'oubliez pas d'activer l'authentification dans votre configuration MongoDB"
 echo "(security.authorization: enabled) et de redémarrer l'instance après avoir créé les utilisateurs."
-
-# --- 5. Exportation optionnelle vers un fichier JSON ---
-if [ -n "$JSON_OUTPUT_FILE" ]; then
-    echo ""
-    echo "--- Exportation des détails des utilisateurs vers le fichier JSON : ${JSON_OUTPUT_FILE} ---"
-
-    JSON_CONTENT="[
-  {
-    \"database\": \"${DB_NAME}\",
-    \"username\": \"${USER_READONLY}\",
-    \"role\": \"read\",
-    \"password\": \"${PASSWORD_READONLY}\"
-  },
-  {
-    \"database\": \"${DB_NAME}\",
-    \"username\": \"${USER_READWRITE}\",
-    \"role\": \"readWrite\",
-    \"password\": \"${PASSWORD_READWRITE}\"
-  },
-  {
-    \"database\": \"${DB_NAME}\",
-    \"username\": \"${USER_OWNER}\",
-    \"role\": \"dbOwner\",
-    \"password\": \"${PASSWORD_OWNER}\"
-  }
-]"
-    echo "${JSON_CONTENT}" > "${JSON_OUTPUT_FILE}"
-    if [ $? -eq 0 ]; then
-        echo "Détails des utilisateurs exportés avec succès vers ${JSON_OUTPUT_FILE}."
-    else
-        echo "Erreur: Impossible d'écrire dans le fichier JSON ${JSON_OUTPUT_FILE}. Vérifiez les permissions."
-    fi
-fi
-echo "--- Fin du script de création d'utilisateurs MongoDB ---"
-echo "Vous pouvez maintenant utiliser ces utilisateurs pour accéder à la base de données '${DB_NAME}'.
