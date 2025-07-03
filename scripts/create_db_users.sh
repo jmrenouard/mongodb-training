@@ -4,24 +4,33 @@
 # Description : Installe pwgen, génère un mot de passe unique pour chaque utilisateur,
 #               et écrit les commandes mongosh pour créer des utilisateurs
 #               (ReadOnly, ReadWrite, Owner) pour une DB dans un fichier.
-# Utilisation : bash ./generate_mongodb_users.sh <NOM_DE_LA_BASE_DE_DONNEES> [<PORT_MONGODB>] <FICHIER_SORTIE_COMMANDES>
-# Exemple : bash ./generate_mongodb_users.sh myappdb 27017 /tmp/create_users_myappdb.js
-#           Si le port n'est pas spécifié, 27017 sera utilisé par défaut.
+# Utilisation : bash ./generate_mongodb_users.sh <NOM_DE_LA_BASE_DE_DONNEES> [<FICHIER_SORTIE_COMMANDES>]
+# Exemple : bash ./generate_mongodb_users.sh myappdb /tmp/create_users_myappdb.js
+#           Si le fichier de sortie n'est pas spécifié, les commandes seront affichées sur la sortie standard.
 
 DB_NAME="$1"
-MONGO_PORT="${2:-27017}" # Utilise 27017 par défaut si non spécifié
-COMMANDS_OUTPUT_FILE="$3" # Fichier de sortie des commandes mongosh
+# Le port MongoDB est maintenant fixé à 27017 par défaut, non configurable via les arguments du script.
+MONGO_PORT="27017" 
 
-# --- Vérification des arguments ---
-if [ -z "$DB_NAME" ] || [ -z "$COMMANDS_OUTPUT_FILE" ]; then
-  echo "Usage: bash $0 <NOM_DE_LA_BASE_DE_DONNEES> [<PORT_MONGODB>] <FICHIER_SORTIE_COMMANDES>"
-  echo "Exemple : bash $0 myappdb 27017 /tmp/create_users_myappdb.js"
+# Détermine le fichier de sortie. Si le deuxième argument est vide, affiche sur stdout.
+if [ -z "$2" ]; then
+    COMMANDS_OUTPUT_FILE="/dev/stdout" # Redirige vers la sortie standard
+    echo "--- Les commandes mongosh seront affichées sur la sortie standard ---"
+else
+    COMMANDS_OUTPUT_FILE="$2"
+    echo "--- Les commandes mongosh seront écrites dans : ${COMMANDS_OUTPUT_FILE} ---"
+fi
+
+# --- Vérification de l'argument de la base de données ---
+if [ -z "$DB_NAME" ]; then
+  echo "Usage: bash $0 <NOM_DE_LA_BASE_DE_DONNEES> [<FICHIER_SORTIE_COMMANDES>]"
+  echo "Exemple : bash $0 myappdb /tmp/create_users_myappdb.js"
   exit 1
 fi
 
 echo "--- Préparation pour la création d'utilisateurs MongoDB pour la DB : ${DB_NAME} ---"
 echo "Port MongoDB ciblé : ${MONGO_PORT}"
-echo "Les commandes mongosh seront écrites dans : ${COMMANDS_OUTPUT_FILE}"
+
 
 # --- 1. Installation de pwgen si nécessaire ---
 if ! command -v pwgen &> /dev/null; then
@@ -63,22 +72,24 @@ USER_OWNER="${DB_NAME}Owner"
 
 echo "--- Écriture des commandes mongosh dans le fichier ${COMMANDS_OUTPUT_FILE} ---"
 
-# Initialiser le fichier de commandes
-echo "// Commandes mongosh pour créer les utilisateurs de la base de données '${DB_NAME}'" > "${COMMANDS_OUTPUT_FILE}"
-echo "// Généré par generate_mongodb_users.sh le $(date)" >> "${COMMANDS_OUTPUT_FILE}"
-echo "// Mot de passe ReadOnly: ${PASSWORD_READONLY}" >> "${COMMANDS_OUTPUT_FILE}"
-echo "// Mot de passe ReadWrite: ${PASSWORD_READWRITE}" >> "${COMMANDS_OUTPUT_FILE}"
-echo "// Mot de passe Owner: ${PASSWORD_OWNER}" >> "${COMMANDS_OUTPUT_FILE}"
-echo "" >> "${COMMANDS_OUTPUT_FILE}"
+# Initialiser le fichier de commandes (ou afficher sur stdout)
+if [ "$COMMANDS_OUTPUT_FILE" != "/dev/stdout" ]; then
+    echo "// Commandes mongosh pour créer les utilisateurs de la base de données '${DB_NAME}'" > "${COMMANDS_OUTPUT_FILE}"
+    echo "// Généré par generate_mongodb_users.sh le $(date)" >> "${COMMANDS_OUTPUT_FILE}"
+    echo "// Mot de passe ReadOnly: ${PASSWORD_READONLY}" >> "${COMMANDS_OUTPUT_FILE}"
+    echo "// Mot de passe ReadWrite: ${PASSWORD_READWRITE}" >> "${COMMANDS_OUTPUT_FILE}"
+    echo "// Mot de passe Owner: ${PASSWORD_OWNER}" >> "${COMMANDS_OUTPUT_FILE}"
+    echo "" >> "${COMMANDS_OUTPUT_FILE}"
+fi
 
 # Commande pour l'utilisateur ReadOnly
 cat <<EOF >> "${COMMANDS_OUTPUT_FILE}"
 use ${DB_NAME}
 db.createUser(
   {
-    user: "${USER_READONLY}",
-    pwd: "${PASSWORD_READONLY}",
-    roles: [ { role: "read", db: "${DB_NAME}" } ]
+    "user": "${USER_READONLY}",
+    "pwd": "${PASSWORD_READONLY}",
+    "roles": [ { "role": "read", "db": "${DB_NAME}" } ]
   }
 )
 EOF
@@ -91,9 +102,9 @@ cat <<EOF >> "${COMMANDS_OUTPUT_FILE}"
 use ${DB_NAME}
 db.createUser(
   {
-    user: "${USER_READWRITE}",
-    pwd: "${PASSWORD_READWRITE}",
-    roles: [ { role: "readWrite", db: "${DB_NAME}" } ]
+    "user": "${USER_READWRITE}",
+    "pwd": "${PASSWORD_READWRITE}",
+    "roles": [ { "role": "readWrite", "db": "${DB_NAME}" } ]
   }
 )
 EOF
@@ -106,16 +117,18 @@ cat <<EOF >> "${COMMANDS_OUTPUT_FILE}"
 use ${DB_NAME}
 db.createUser(
   {
-    user: "${USER_OWNER}",
-    pwd: "${PASSWORD_OWNER}",
-    roles: [ { role: "dbOwner", db: "${DB_NAME}" } ]
+    "user": "${USER_OWNER}",
+    "pwd": "${PASSWORD_OWNER}",
+    "roles": [ { "role": "dbOwner", "db": "${DB_NAME}" } ]
   }
 )
 EOF
 
 echo ""
-echo "Fichier de commandes mongosh créé avec succès : ${COMMANDS_OUTPUT_FILE}"
-echo ""
+if [ "$COMMANDS_OUTPUT_FILE" != "/dev/stdout" ]; then
+    echo "Fichier de commandes mongosh créé avec succès : ${COMMANDS_OUTPUT_FILE}"
+    echo ""
+fi
 
 # --- 4. Synthèse des utilisateurs créés ---
 echo "--- Synthèse des utilisateurs créés pour la base de données '${DB_NAME}' ---"
