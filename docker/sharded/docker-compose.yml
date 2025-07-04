@@ -17,7 +17,7 @@ services:
     volumes:
       - ./data/config1:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
       - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - ${MONGO_NETWORK}
@@ -37,7 +37,7 @@ services:
     volumes:
       - ./data/config2:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -58,7 +58,8 @@ services:
     volumes:
       - ./data/config3:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
+
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -80,7 +81,7 @@ services:
     volumes:
       - ./data/shard1-1:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -99,7 +100,7 @@ services:
     volumes:
       - ./data/shard1-2:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -120,7 +121,7 @@ services:
     volumes:
       - ./data/shard1-3:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -142,7 +143,7 @@ services:
     volumes:
       - ./data/shard2-1:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -161,7 +162,7 @@ services:
     volumes:
       - ./data/shard2-2:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -182,7 +183,7 @@ services:
     volumes:
       - ./data/shard2-3:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/mongod.conf:/etc/mongod.conf:ro
+      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
