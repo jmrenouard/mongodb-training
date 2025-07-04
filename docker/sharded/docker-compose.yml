@@ -27,10 +27,10 @@ services:
       mongod --configsvr --replSet configReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-#      --auth
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      --auth
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+    #   - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - "${CONFIG_PORT_2}:27017"
     volumes:
@@ -49,10 +49,10 @@ services:
       mongod --configsvr --replSet configReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-#      --auth
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      --auth
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+    #   - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - "${CONFIG_PORT_3}:27017"
     volumes:
