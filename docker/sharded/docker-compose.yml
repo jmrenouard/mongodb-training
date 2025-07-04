@@ -231,12 +231,9 @@ services:
     depends_on:
       - mongos-router-2
     command: >
-      bash -c "
-        sleep 30
-        && mongosh --host mongos-router-1:27017 -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin /scripts/init-replica-sets.js
-        && mongosh --host mongos-router-1:27017 -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin /scripts/init-users.js
-      "
-
+      sleep 30
+      mongosh --host mongos-router-1:27017 -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin /scripts/init-replica-sets.js
+      mongosh --host mongos-router-1:27017 -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin /scripts/init-users.js
 networks:
   mongodb-sharded-network:
     driver: bridge
