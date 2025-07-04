@@ -1,0 +1,245 @@
+version: '3.8'
+
+services:
+  # ===== CONFIG SERVERS =====
+  config-server-1:
+    image: mongo:${MONGO_VERSION}
+    container_name: config-server-1
+    command: >
+      mongod --configsvr --replSet configReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "${CONFIG_PORT_1}:27017"
+    volumes:
+      - ./data/config1:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+
+  config-server-2:
+    image: mongo:${MONGO_VERSION}
+    container_name: config-server-2
+    command: >
+      mongod --configsvr --replSet configReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${CONFIG_PORT_2}:27017"
+    volumes:
+      - ./data/config2:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - config-server-1
+
+  config-server-3:
+    image: mongo:${MONGO_VERSION}
+    container_name: config-server-3
+    command: >
+      mongod --configsvr --replSet configReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${CONFIG_PORT_3}:27017"
+    volumes:
+      - ./data/config3:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - config-server-2
+
+  # ===== SHARD 1 =====
+  shard1-replica-1:
+    image: mongo:${MONGO_VERSION}
+    container_name: shard1-replica-1
+    command: >
+      mongod --shardsvr --replSet shard1ReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${SHARD1_PORT_1}:27017"
+    volumes:
+      - ./data/shard1-1:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+
+  shard1-replica-2:
+    image: mongo:${MONGO_VERSION}
+    container_name: shard1-replica-2
+    command: >
+      mongod --shardsvr --replSet shard1ReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${SHARD1_PORT_2}:27017"
+    volumes:
+      - ./data/shard1-2:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - shard1-replica-1
+
+  shard1-replica-3:
+    image: mongo:${MONGO_VERSION}
+    container_name: shard1-replica-3
+    command: >
+      mongod --shardsvr --replSet shard1ReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${SHARD1_PORT_3}:27017"
+    volumes:
+      - ./data/shard1-3:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - shard1-replica-2
+
+  # ===== SHARD 2 =====
+  shard2-replica-1:
+    image: mongo:${MONGO_VERSION}
+    container_name: shard2-replica-1
+    command: >
+      mongod --shardsvr --replSet shard2ReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${SHARD2_PORT_1}:27017"
+    volumes:
+      - ./data/shard2-1:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+
+  shard2-replica-2:
+    image: mongo:${MONGO_VERSION}
+    container_name: shard2-replica-2
+    command: >
+      mongod --shardsvr --replSet shard2ReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${SHARD2_PORT_2}:27017"
+    volumes:
+      - ./data/shard2-2:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - shard2-replica-1
+
+  shard2-replica-3:
+    image: mongo:${MONGO_VERSION}
+    container_name: shard2-replica-3
+    command: >
+      mongod --shardsvr --replSet shard2ReplSet 
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+      --auth
+    ports:
+      - "${SHARD2_PORT_3}:27017"
+    volumes:
+      - ./data/shard2-3:/data/db
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - shard2-replica-2
+
+  # ===== MONGOS ROUTERS =====
+  mongos-router-1:
+    image: mongo:${MONGO_VERSION}
+    container_name: mongos-router-1
+    command: >
+      mongos --configdb configReplSet/config-server-1:27017,config-server-2:27017,config-server-3:27017
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+    ports:
+      - "${MONGOS_PORT_1}:27017"
+    volumes:
+      - ./data/keyfile:/data/keyfile:ro
+      - ./init-scripts:/scripts
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - config-server-3
+      - shard1-replica-3
+      - shard2-replica-3
+
+  mongos-router-2:
+    image: mongo:${MONGO_VERSION}
+    container_name: mongos-router-2
+    command: >
+      mongos --configdb configReplSet/config-server-1:27017,config-server-2:27017,config-server-3:27017
+      --port 27017 --bind_ip_all
+      --keyFile /data/keyfile/mongodb-keyfile
+    ports:
+      - "${MONGOS_PORT_2}:27017"
+    volumes:
+      - ./data/keyfile:/data/keyfile:ro
+    networks:
+      - ${MONGO_NETWORK}
+    restart: unless-stopped
+    depends_on:
+      - mongos-router-1
+
+  # ===== SERVICE D'INITIALISATION =====
+  mongo-setup:
+    image: mongo:${MONGO_VERSION}
+    container_name: mongo-setup
+    volumes:
+      - ./init-scripts:/scripts
+      - ./data/keyfile:/data/keyfile:ro
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SUPERADMIN_USERNAME=${SUPERADMIN_USERNAME}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
+    networks:
+      - ${MONGO_NETWORK}
+    depends_on:
+      - mongos-router-2
+    command: >
+      bash -c "
+        sleep 30
+        && mongosh --host mongos-router-1:27017 -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin /scripts/init-replica-sets.js
+        && mongosh --host mongos-router-1:27017 -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin /scripts/init-users.js
+      "
+
+networks:
+  mongodb-sharded-network:
+    driver: bridge
+
+volumes:
+  keyfile:
+    driver: local

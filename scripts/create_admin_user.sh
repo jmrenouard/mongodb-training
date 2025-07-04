@@ -41,6 +41,7 @@ db.createUser(
     roles: [ { role: "root", db: "admin" } ]
   }
 )
+db.grantRolesToUser( "admin", [ "userAdminAnyDatabase","readWriteAnyDatabase" ])
 EOF
 
 # Vérifie le code de sortie de mongosh
