@@ -22,78 +22,8 @@ Cet environnement est un ensemble de réplication standard, conçu pour la haute
 | `instance11` | Membre du Replica Set | `27027` | `simpleRS` |
 | `instance12` | Membre du Replica Set | `27028` | `simpleRS` |
 
-### 🌐 Cluster Shardé
 
-Cette architecture est conçue pour l'évolutivité horizontale (scalabilité horizontale). Elle distribue les données sur plusieurs serveurs (shards), permettant de gérer de très grands volumes de données et une charge de travail élevée.
-
-Un cluster shardé MongoDB est composé de trois composants principaux :
-
-1.  **Shards (Fragments)** : Chaque shard est un replica set qui stocke une partie des données du cluster. Cette architecture contient deux shards : `shardRS1` et `shardRS2`.
-2.  **Config Servers (Serveurs de configuration)** : Ils stockent les métadonnées du cluster. Ces métadonnées incluent la correspondance entre les données et les shards qui les contiennent. Pour la robustesse, ils sont déployés en tant que replica set (`configRS`).
-3.  **Query Routers (Routeurs de requêtes - `mongos`)** : Ce sont des instances `mongos` qui agissent comme interface pour les applications clientes. Elles routent les requêtes de lecture et d'écriture vers les shards appropriés. L'instance `instance22` correspond à ce rôle.
-
-📈 **Diagramme de l'Architecture du Cluster Shardé**
-```mermaid
-graph TD
-    subgraph Cluster Shardé
-        subgraph Shard 1
-            direction LR
-            A[instance16shardsvrPort: 27032]
-            B[instance17shardsvrPort: 27033]
-            C[instance18shardsvrPort: 27034]
-            A --- B --- C --- A
-        end
-
-        subgraph Shard 2
-            direction LR
-            D[instance19shardsvrPort: 27035]
-            E[instance20shardsvrPort: 27036]
-            F[instance21shardsvrPort: 27037]
-            D --- E --- F --- D
-        end
-
-        subgraph Config Servers
-            direction LR
-            G[instance13configsvrPort: 27029]
-            H[instance14configsvrPort: 27030]
-            I[instance15configsvrPort: 27031]
-            G --- H --- I --- G
-        end
-
-        ClientApp[Application Cliente] --> Mongos
-
-        Mongos(instance22mongosPort: 27038)
-
-        Mongos -- Requêtes --> Shard 1
-        Mongos -- Requêtes --> Shard 2
-        Mongos -- Lit les métadonnées --> Config Servers
-    end
-```
-
-📊 **Tableaux Récapitulatifs par Composant du Cluster**
-
-**Serveurs de Configuration (`configRS`)**
-| Instance | Rôle | Port | Nom du Replica Set |
-| :--- | :--- | :--- | :--- |
-| `instance13` | `configsvr` | `27029` | `configRS` |
-| `instance14` | `configsvr` | `27030` | `configRS` |
-| `instance15` | `configsvr` | `27031` | `configRS` |
-
-**Shard 1 (`shardRS1`)**
-| Instance | Rôle | Port | Nom du Replica Set |
-| :--- | :--- | :--- | :--- |
-| `instance16` | `shardsvr` | `27032` | `shardRS1` |
-| `instance17` | `shardsvr` | `27033` | `shardRS1` |
-| `instance18` | `shardsvr` | `27034` | `shardRS1` |
-
-**Shard 2 (`shardRS2`)**
-| Instance | Rôle | Port | Nom du Replica Set |
-| :--- | :--- | :--- | :--- |
-| `instance19` | `shardsvr` | `27035` | `shardRS2` |
-| `instance20` | `shardsvr` | `27036` | `shardRS2` |
-| `instance21` | `shardsvr` | `27037` | `shardRS2` |
-
-**Routeur de Requêtes (`mongos`)**
+**Standalone (`mongod`)**
 | Instance | Rôle | Port | Description |
 | :--- | :--- | :--- | :--- |
 | `instance22` | `mongos` | `27038` | Point d'entrée pour les applications. Ne stocke pas de données. |
