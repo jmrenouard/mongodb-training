@@ -7,18 +7,12 @@ services:
       mongod --configsvr --replSet configReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - "${CONFIG_PORT_1}:27017"
     volumes:
       - ./data/config1:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
-      - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -30,14 +24,12 @@ services:
       mongod --configsvr --replSet configReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${CONFIG_PORT_2}:27017"
     volumes:
       - ./data/config2:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -51,14 +43,12 @@ services:
       mongod --configsvr --replSet configReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${CONFIG_PORT_3}:27017"
     volumes:
       - ./data/config3:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
 
     networks:
       - ${MONGO_NETWORK}
@@ -74,14 +64,12 @@ services:
       mongod --shardsvr --replSet shard1ReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${SHARD1_PORT_1}:27017"
     volumes:
       - ./data/shard1-1:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -93,14 +81,12 @@ services:
       mongod --shardsvr --replSet shard1ReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${SHARD1_PORT_2}:27017"
     volumes:
       - ./data/shard1-2:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -114,14 +100,12 @@ services:
       mongod --shardsvr --replSet shard1ReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${SHARD1_PORT_3}:27017"
     volumes:
       - ./data/shard1-3:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -136,14 +120,12 @@ services:
       mongod --shardsvr --replSet shard2ReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${SHARD2_PORT_1}:27017"
     volumes:
       - ./data/shard2-1:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -155,14 +137,12 @@ services:
       mongod --shardsvr --replSet shard2ReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${SHARD2_PORT_2}:27017"
     volumes:
       - ./data/shard2-2:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
@@ -176,14 +156,12 @@ services:
       mongod --shardsvr --replSet shard2ReplSet 
       --port 27017 --bind_ip_all
       --keyFile /data/keyfile/mongodb-keyfile
-      --config /etc/mongod.conf
       --auth
     ports:
       - "${SHARD2_PORT_3}:27017"
     volumes:
       - ./data/shard2-3:/data/db
       - ./data/keyfile:/data/keyfile:ro
-      - ./data/config/mongod.conf:/etc/mongod.conf:ro
     networks:
       - ${MONGO_NETWORK}
     restart: unless-stopped
