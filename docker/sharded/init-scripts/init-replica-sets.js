@@ -2,6 +2,9 @@
 
 // 1. Initialisation du Config Server Replica Set
 print("=== Initialisation du Config Server Replica Set ===");
+print("=== Initialisation du Shard 1 Replica Set ===");
+db = connect("config-server-1:27017/admin");
+db.auth("root", "SuperSecurePassword123");
 try {
     var configResult = rs.initiate({
         _id: "configReplSet",
@@ -19,11 +22,12 @@ try {
 
 // Attendre que le replica set soit prêt
 sleep(10000);
+rs.status();
 
 // 2. Initialisation du Shard 1 Replica Set
 print("=== Initialisation du Shard 1 Replica Set ===");
 db = connect("shard1-replica-1:27017/admin");
-db.auth("root", "SuperSecurePassword123!");
+db.auth("root", "SuperSecurePassword123");
 
 try {
     var shard1Result = rs.initiate({
@@ -39,10 +43,14 @@ try {
     print("Erreur lors de l'initialisation du shard 1:", error);
 }
 
+// Attendre la stabilisation des replica sets
+sleep(10000);
+rs.status();
+
 // 3. Initialisation du Shard 2 Replica Set
 print("=== Initialisation du Shard 2 Replica Set ===");
 db = connect("shard2-replica-1:27017/admin");
-db.auth("root", "SuperSecurePassword123!");
+db.auth("root", "SuperSecurePassword123");
 
 try {
     var shard2Result = rs.initiate({
@@ -59,12 +67,13 @@ try {
 }
 
 // Attendre la stabilisation des replica sets
-sleep(15000);
+sleep(10000);
+rs.status();
 
 // 4. Ajout des shards au cluster
 print("=== Ajout des shards au cluster ===");
 db = connect("mongos-router-1:27017/admin");
-db.auth("root", "SuperSecurePassword123!");
+db.auth("root", "SuperSecurePassword123");
 
 try {
     var addShard1 = sh.addShard("shard1ReplSet/shard1-replica-1:27017,shard1-replica-2:27017,shard1-replica-3:27017");

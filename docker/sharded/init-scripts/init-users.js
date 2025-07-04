@@ -4,13 +4,13 @@ print("=== Création des utilisateurs administrateurs ===");
 
 // Connexion au mongos en tant que root
 db = connect("mongos-router-1:27017/admin");
-db.auth("root", "SuperSecurePassword123!");
+db.auth("root", "SuperSecurePassword123");
 
 // 1. Création de l'utilisateur admin avec privilèges d'administration des utilisateurs
 try {
     var adminUser = db.createUser({
         user: "admin",
-        pwd: "AdminPassword123!",
+        pwd: "AdminPassword123",
         roles: [
             { role: "userAdminAnyDatabase", db: "admin" },
             { role: "dbAdminAnyDatabase", db: "admin" },
@@ -26,7 +26,7 @@ try {
 try {
     var superAdminUser = db.createUser({
         user: "superadmin",
-        pwd: "SuperAdminPassword123!",
+        pwd: "SuperAdminPassword123",
         roles: [
             { role: "root", db: "admin" },
             { role: "clusterAdmin", db: "admin" },
