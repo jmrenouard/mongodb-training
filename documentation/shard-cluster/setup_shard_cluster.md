@@ -19,25 +19,25 @@ graph TD
         Client -- "mongodb://router-01:27017,router-02:27017" --> Mongos1[Mongos Router 1]
         Client --> Mongos2[Mongos Router 2]
 
-        Mongos1  ConfigRS[Config Server Replica Set]
-        Mongos2  ConfigRS
+        Mongos1 --> ConfigRS[Config Server Replica Set]
+        Mongos2 --> ConfigRS
 
-        subgraph "Shard 1 (Replica Set)"
+        subgraph Shard1["Shard 1 (Replica Set)"]
             Shard1A[Primary]
             Shard1B[Secondary]
-            Shard1A  Shard1B
+            Shard1A <--> Shard1B
         end
 
-        subgraph "Shard 2 (Replica Set)"
+        subgraph Shard2["Shard 2 (Replica Set)"]
             Shard2A[Primary]
             Shard2B[Secondary]
-            Shard2A  Shard2B
+            Shard2A <--> Shard2B
         end
 
-        Mongos1 -- Achemine les requêtes --> Shard1
-        Mongos1 -- Achemine les requêtes --> Shard2
-        Mongos2 -- Achemine les requêtes --> Shard1
-        Mongos2 -- Achemine les requêtes --> Shard2
+        Mongos1 -- "Achemine les requêtes" --> Shard1
+        Mongos1 -- "Achemine les requêtes" --> Shard2
+        Mongos2 -- "Achemine les requêtes" --> Shard1
+        Mongos2 -- "Achemine les requêtes" --> Shard2
     end
 ```
 

@@ -129,7 +129,3 @@ Exécutez la commande suivante pour vérifier la signature par tag :
 ```bash
 COSIGN_REPOSITORY=docker.io/mongodb/signatures cosign verify --private-infrastructure --key=./server.pem docker.io/mongodb/mongodb-community-server:latest
 ```
-
-```
-
-Vous pouvez utiliser le bouton **Apply** dans le bloc de code ou passer en mode **Agent** pour appliquer automatiquement les modifications suggérées.

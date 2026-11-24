@@ -90,7 +90,7 @@ db.getProfilingStatus();
 flowchart TD
     A[Activer le profiler] --> B[Consulter system.profile]
     B --> C{Requête lente identifiée ?}
-    C -->|Oui| D[Analyser avec explain()]
+    C -->|Oui| D["Analyser avec explain()"]
     D --> E{Plan d'exécution optimal ?}
     E -->|Non| F[Créer index sur champs concernés]
     E -->|Oui| G[Requête optimisée]

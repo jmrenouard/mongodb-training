@@ -1,134 +1,119 @@
-# **Script de Sauvegarde Logique MongoDB (mongodump)**
+# Script de Sauvegarde Logique MongoDB (`scripts/logical_backup.sh`)
 
-Ce dépôt contient un script Bash robuste (mongodb\_backup.sh) conçu pour automatiser les sauvegardes logiques de vos bases de données MongoDB. Il prend en charge diverses topologies (standalone, replica set, sharded cluster) et offre des fonctionnalités essentielles telles que la compression, la vérification d'intégrité via SHA256, et l'encryption optionnelle des sauvegardes.
+Ce document présente le script Bash [scripts/logical_backup.sh](../../scripts/logical_backup.sh) conçu pour automatiser les sauvegardes logiques (`mongodump`) de MongoDB sur topologies standalone, replica set et sharded cluster.
 
-## **Table des Matières**
+> **Note technique** : L'en-tête interne de [scripts/logical_backup.sh](../../scripts/logical_backup.sh) mentionne encore l'ancien nom `mongodb_backup.sh`, et la ligne `26` redirige les logs vers `/var/backups/mongodb/mongodb_backup.log` avant le `mkdir -p` de la ligne `35`. Créez `/var/backups/mongodb` au préalable sur un système neuf.
 
-* [Fonctionnalités](https://www.google.com/search?q=%23fonctionnalit%C3%A9s)  
-* [Avertissement de Sécurité](https://www.google.com/search?q=%23avertissement-de-s%C3%A9curit%C3%A9)  
-* [Prérequis](https://www.google.com/search?q=%23pr%C3%A9requis)  
-* [Utilisation](https://www.google.com/search?q=%23utilisation)  
-  * [Syntaxe Générale](https://www.google.com/search?q=%23syntaxe-g%C3%A9n%C3%A9rale)  
-  * [Exemples d'Utilisation](https://www.google.com/search?q=%23exemples-dutilisation)  
-* [Détails Techniques](https://www.google.com/search?q=%23d%C3%A9tails-techniques)  
-* [Restauration](https://www.google.com/search?q=%23restauration)  
-* [Planification et Maintenance](https://www.google.com/search?q=%23planification-et-maintenance)
+## Table des Matières
 
-## **Fonctionnalités**
+* [Fonctionnalités](#fonctionnalités)
+* [Avertissement de Sécurité](#avertissement-de-sécurité)
+* [Prérequis](#prérequis)
+* [Utilisation](#utilisation)
+  * [Syntaxe Générale](#syntaxe-générale)
+  * [Exemples d'Utilisation](#exemples-dutilisation)
+* [Détails Techniques](#détails-techniques)
+* [Restauration](#restauration)
+* [Planification et Maintenance](#planification-et-maintenance)
 
-* **Prise en charge Multi-Topologie** : Sauvegarde des instances MongoDB standalone, des replica sets et des clusters shardés.  
-* **Détection du Primaire** : Pour les replica sets, le script identifie automatiquement le nœud primaire pour garantir une sauvegarde cohérente.  
-* **Sauvegarde Cohérente** : Utilise l'option \--oplog de mongodump pour les replica sets et les clusters shardés, permettant des restaurations point-in-time.  
-* **Compression Automatique** : Compresse le répertoire de sauvegarde en un fichier .tar.gz.  
-* **Vérification d'Intégrité** : Génère une somme de contrôle SHA256 pour le fichier compressé, permettant de vérifier son intégrité après le transfert ou le stockage.  
-* **Encryption Optionnelle** : Permet d'encrypter le fichier de sauvegarde compressé avec un mot de passe via openssl pour une sécurité accrue.  
-* **Journalisation** : Tous les messages du script sont enregistrés dans un fichier de log dédié (/var/backups/mongodb/mongodb\_backup.log) et affichés sur la console.  
-* **Gestion des Répertoires** : Vérifie et crée automatiquement le répertoire de base des sauvegardes (/var/backups/mongodb/) si nécessaire.
+## Fonctionnalités
 
-## **Avertissement de Sécurité**
+* **Prise en charge Multi-Topologie** : Sauvegarde des instances MongoDB `standalone`, des `replicaset` et des clusters `sharded`.
+* **Détection du Primaire** : Sur replica set, la fonction `find_primary` interroge `rs.isMaster()` via `mongosh` afin de cibler le nœud primaire.
+* **Sauvegarde Cohérente** : Ajoute `--oplog` à `mongodump` pour les replica sets et clusters shardés.
+* **Compression Automatique** : Empaquette le dump dans une archive `.tar.gz`.
+* **Vérification d'Intégrité** : Calcule une empreinte `sha256sum` pour l'archive générée.
+* **Chiffrement Optionnel** : Chiffre l'archive avec OpenSSL AES-256 (`-aes-256-cbc` + `.tar.gz.enc`) lorsqu'un mot de passe de chiffrement est fourni.
+* **Journalisation** : Écrit les traces dans `/var/backups/mongodb/mongodb_backup.log` et sur la console.
 
-Il est fortement déconseillé de stocker des mots de passe en clair directement dans des scripts pour les environnements de production.  
-Ce script accepte les identifiants MongoDB et le mot de passe d'encryption en tant que paramètres pour des raisons de commodité (développement, test). Pour un usage en production, veuillez envisager des méthodes plus sécurisées :
+## Avertissement de Sécurité
 
-* **Variables d'environnement** : Définissez MONGO\_USERNAME, MONGO\_PASSWORD, MONGO\_AUTHENTICATION\_DATABASE, MONGO\_ENCRYPTION\_PASSWORD.  
-* **Fichiers de clés** : Pour l'authentification inter-serveurs dans MongoDB.  
-* **Gestionnaires de secrets** : Des outils dédiés à la gestion sécurisée des secrets (ex: HashiCorp Vault, AWS Secrets Manager, Google Secret Manager).
+Évitez de transmettre des mots de passe en clair sur la ligne de commande en production. Réservez les paramètres en ligne de commande aux environnements de laboratoire et utilisez un fichier protégé (`0600`) ou un coffre de secrets en production.
 
-## **Prérequis**
+## Prérequis
 
-* **Système d'exploitation** : Compatible avec les systèmes basés sur Debian/Ubuntu (Ubuntu 24.04 recommandé).  
-* **Outils MongoDB** :  
-  * mongodump  
-  * mongosh (nécessaire pour la détection du primaire dans les replica sets)  
-* **Outils Système** :  
-  * tar  
-  * gzip  
-  * sha256sum  
-  * openssl (pour l'encryption)  
-* **Permissions** :  
-  * L'utilisateur exécutant le script doit avoir les permissions de lecture/écriture sur le répertoire de sauvegarde (/var/backups/mongodb/).  
-  * L'utilisateur MongoDB utilisé pour la sauvegarde doit avoir les rôles backup ou read sur les bases de données à sauvegarder.  
-  * Pour les replica sets et les clusters shardés, l'utilisateur MongoDB doit également avoir le rôle clusterMonitor pour permettre au script de trouver le primaire ou de se connecter au mongos.
+* **Système d'exploitation** : Linux Debian / Ubuntu (Ubuntu 24.04 recommandé).
+* **Outils MongoDB** : `mongodump` et `mongosh`.
+* **Outils Système** : `tar`, `gzip`, `sha256sum`, `openssl` (si chiffrement activé).
+* **Permissions** : Droits d'écriture sur `/var/backups/mongodb/` et rôle MongoDB `backup` ou `read` (plus `clusterMonitor` sur replica set ou sharded cluster).
 
-## **Utilisation**
+## Utilisation
 
-1. **Téléchargez le script** :  
-   wget \-O mongodb\_backup.sh https://raw.githubusercontent.com/votre\_utilisateur/votre\_repo/main/mongodb\_backup.sh \# Remplacez par votre URL réelle
+Rendez le script exécutable puis créez le répertoire cible si nécessaire :
 
-2. **Rendez-le exécutable** :  
-   chmod \+x mongodb\_backup.sh
+```bash
+sudo mkdir -p /var/backups/mongodb
+chmod +x scripts/logical_backup.sh
+```
 
-3. **Exécutez le script** en fonction de votre topologie MongoDB et de vos besoins en encryption.
+### Syntaxe Générale
 
-### **Syntaxe Générale**
+```bash
+bash ./scripts/logical_backup.sh <TYPE_DE_SAUVEGARDE> <HOST> <PORT> [USERNAME] [PASSWORD] [AUTH_DB] [ENCRYPTION_PASSWORD]
+```
 
-bash ./mongodb\_backup.sh \<TYPE\_DE\_SAUVEGARDE\> \<HOST\> \<PORT\> \[USERNAME\] \[PASSWORD\] \[AUTH\_DB\] \[ENCRYPTION\_PASSWORD\]
+* `<TYPE_DE_SAUVEGARDE>` : `standalone`, `replicaset` ou `sharded`.
+* `<HOST>` : Adresse IP ou nom d'hôte de l'instance MongoDB ou du routeur `mongos`.
+* `<PORT>` : Port d'écoute MongoDB.
+* `[USERNAME]` : Nom d'utilisateur MongoDB (optionnel).
+* `[PASSWORD]` : Mot de passe MongoDB (optionnel).
+* `[AUTH_DB]` : Base d'authentification (optionnel, défaut `admin`).
+* `[ENCRYPTION_PASSWORD]` : Secret OpenSSL pour générer `.tar.gz.enc` (optionnel).
 
-* \<TYPE\_DE\_SAUVEGARDE\> : standalone, replicaset, ou sharded.  
-* \<HOST\> : Adresse IP ou nom d'hôte de l'instance MongoDB (ou d'un membre du replica set, ou du mongos).  
-* \<PORT\> : Port de l'instance MongoDB.  
-* \[USERNAME\] : (Optionnel) Nom d'utilisateur MongoDB.  
-* \[PASSWORD\] : (Optionnel) Mot de passe de l'utilisateur MongoDB.  
-* \[AUTH\_DB\] : (Optionnel, par défaut admin) Base de données d'authentification de l'utilisateur MongoDB.  
-* \[ENCRYPTION\_PASSWORD\] : (Optionnel) Mot de passe pour encrypter le fichier de sauvegarde. Si fourni, le fichier .tar.gz sera encrypté en .tar.gz.enc.
+### Exemples d'Utilisation
 
-### **Exemples d'Utilisation**
+1. **Sauvegarde d'une instance Standalone**
 
-#### **1\. Sauvegarde d'une instance Standalone**
+```bash
+# Sans authentification ni chiffrement
+bash ./scripts/logical_backup.sh standalone localhost 27017
 
-* **Sans authentification, sans encryption :**  
-  bash ./mongodb\_backup.sh standalone localhost 27017
+# Avec authentification et chiffrement
+bash ./scripts/logical_backup.sh standalone localhost 27017 admin strongpass admin mySuperSecretKey
+```
 
-* **Avec authentification, sans encryption :**  
-  bash ./mongodb\_backup.sh standalone localhost 27017 myuser mypassword admin
+2. **Sauvegarde d'un Replica Set**
 
-* **Avec authentification et encryption :**  
-  bash ./mongodb\_backup.sh standalone localhost 27017 myuser mypassword admin mySuperSecretEncryptionKey
+```bash
+bash ./scripts/logical_backup.sh replicaset rs0-member1.example.com 27017 backupUser backupPass admin myReplicaSetKey
+```
 
-#### **2\. Sauvegarde d'un Replica Set**
+3. **Sauvegarde d'un Sharded Cluster (via `mongos`)**
 
-Le script se connectera à l'hôte/port fourni pour trouver le nœud primaire et effectuera la sauvegarde à partir de celui-ci.
+```bash
+bash ./scripts/logical_backup.sh sharded my-mongos.example.com 27020 adminUser adminPass admin myShardedClusterKey
+```
 
-* **Avec authentification, sans encryption :**  
-  bash ./mongodb\_backup.sh replicaset rs0-member1.example.com 27017 backupUser backupPass admin
+## Détails Techniques
 
-* **Avec authentification et encryption :**  
-  bash ./mongodb\_backup.sh replicaset rs0-member1.example.com 27017 backupUser backupPass admin myReplicaSetEncryptionKey
+```mermaid
+flowchart TD
+    START["scripts/logical_backup.sh"] --> TOPO{Topologie}
+    TOPO -->|standalone| DUMP["mongodump"]
+    TOPO -->|replicaset| PRI["find_primary via mongosh"] --> DUMP_OP["mongodump --oplog"]
+    TOPO -->|sharded| DUMP_OP
+    DUMP --> ARCH["tar + gzip + sha256sum"]
+    DUMP_OP --> ARCH
+    ARCH -->|Secret fourni| ENC["openssl enc .tar.gz.enc"]
+```
 
-#### **3\. Sauvegarde d'un Sharded Cluster**
+## Restauration
 
-La sauvegarde doit être effectuée via une instance mongos.
+Pour restaurer manuellement une archive produite par `scripts/logical_backup.sh`, ou utilisez directement [scripts/logical_restore.sh](../../scripts/logical_restore.sh) (décrit dans [script_restauration.md](script_restauration.md)) :
 
-* **Avec authentification, sans encryption :**  
-  bash ./mongodb\_backup.sh sharded my-mongos.example.com 27020 adminUser adminPass admin
+```bash
+# 1. Déchiffrer l'archive si elle se termine par .enc
+openssl enc -aes-256-cbc -d -in "/path/to/backup_file.tar.gz.enc" -out "/path/to/backup_file.tar.gz" -k "YOUR_ENCRYPTION_PASSWORD"
 
-* **Avec authentification et encryption :**  
-  bash ./mongodb\_backup.sh sharded my-mongos.example.com 27020 adminUser adminPass admin myShardedClusterEncryptionKey
+# 2. Extraire l'archive
+tar -xzf "/path/to/backup_file.tar.gz" -C "/your/restore/directory"
 
-## **Détails Techniques**
+# 3. Restaurer avec mongorestore (--oplogReplay si sauvegarde replica set / sharded)
+mongorestore --host <TARGET_HOST> --port <TARGET_PORT> --username <USERNAME> --password <PASSWORD> --authenticationDatabase <AUTH_DB> --oplogReplay "/your/restore/directory/backup_data_timestamp"
+```
 
-* **find\_primary Function** : Cette fonction interne utilise mongosh pour interroger le statut du replica set (rs.isMaster()) et extraire l'adresse du nœud primaire. Cela garantit que mongodump se connecte toujours à la source de données la plus à jour et la plus cohérente dans un replica set.  
-* **\--oplog Option** : Pour les replica sets et les clusters shardés, l'option \--oplog est ajoutée à mongodump. Cela inclut le journal des opérations (oplog) dans la sauvegarde, ce qui est crucial pour les restaurations point-in-time et pour maintenir la cohérence des données dans les environnements distribués.
+## Planification et Maintenance
 
-## **Restauration**
-
-Pour restaurer une sauvegarde effectuée avec ce script :
-
-1. **Déchiffrer le fichier (si encrypté)** :  
-   openssl enc \-aes-256-cbc \-d \-in "/path/to/backup\_file.tar.gz.enc" \-out "/path/to/backup\_file.tar.gz" \-k "YOUR\_ENCRYPTION\_PASSWORD"
-
-2. **Décompresser le fichier** :  
-   tar \-xzf "/path/to/backup\_file.tar.gz" \-C "/your/restore/directory"
-
-   Cela extraira le contenu de la sauvegarde (un répertoire nommé avec l'horodatage) dans le répertoire de restauration spécifié.  
-3. **Restaurer avec mongorestore** :  
-   mongorestore \--host \<TARGET\_HOST\> \--port \<TARGET\_PORT\> \--username \<USERNAME\> \--password \<PASSWORD\> \--authenticationDatabase \<AUTH\_DB\> \--oplogReplay "/your/restore/directory/backup\_data\_timestamp"
-
-   * \--oplogReplay est essentiel si la sauvegarde a été faite avec \--oplog.
-
-## **Planification et Maintenance**
-
-* **Cron Jobs** : Intégrez ce script dans un job cron pour automatiser les sauvegardes régulières (quotidiennes, hebdomadaires, etc.).  
-* **Politique de Rétention** : Mettez en place un script distinct pour supprimer les anciennes sauvegardes et gérer l'espace disque.  
-* **Surveillance** : Surveillez les logs du script (/var/backups/mongodb/mongodb\_backup.log) et les logs de MongoDB pour détecter toute anomalie ou échec de sauvegarde.  
-* **Stockage Externe** : Envisagez de déplacer les fichiers de sauvegarde vers un stockage externe ou un service de stockage cloud (ex: S3, Google Cloud Storage, NFS) pour une meilleure résilience en cas de défaillance du serveur.
+* **Planification cron** : Planifiez `scripts/logical_backup.sh` en exécution quotidienne avec redirection vers un journal surveillé.
+* **Politique de rétention** : Purge périodique des archives expirées et copie hors site (stockage objet ou NFS).
+* **Supervision** : Vérifiez `/var/backups/mongodb/mongodb_backup.log` et la présence des fichiers `.sha256` après chaque exécution.

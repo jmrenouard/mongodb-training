@@ -26,10 +26,10 @@ Le plugin MongoDB utilise un fichier de configuration `mongo.conf` avec plusieur
 
 Le plugin supporte les sessions nommées permettant de surveiller plusieurs instances MongoDB depuis un seul agent[2][4] :
 
-```
-Plugins.MongoDB.Sessions..Uri
-Plugins.MongoDB.Sessions..User  
-Plugins.MongoDB.Sessions..Password
+```ini
+Plugins.MongoDB.Sessions.<SessionName>.Uri
+Plugins.MongoDB.Sessions.<SessionName>.User
+Plugins.MongoDB.Sessions.<SessionName>.Password
 ```
 
 ## 📊 Sondes et Métriques Collectées
