@@ -1,113 +1,77 @@
-# **📚 Documentation des Stratégies de Sauvegarde et Restauration MongoDB**
+# Documentation des Stratégies de Sauvegarde et Restauration PITR MongoDB
 
-Cette documentation explique le fonctionnement des scripts Bash que nous avons développés pour gérer les sauvegardes complètes et incrémentielles de MongoDB, ainsi que leur processus de restauration.
+Cette documentation décrit le fonctionnement des scripts Bash situés dans [scripts/backups_pitr/](.): [mongo_backup.sh](mongo_backup.sh) (sauvegarde complète et incrémentielle via oplog) et [mongo_restore.sh](mongo_restore.sh) (restauration complète suivie des incrémentales).
 
-## **1\. 💾 Stratégie de Sauvegarde MongoDB**
+> **Note dépôt** : Une copie quasi identique de `mongo_backup.sh` existe à l'emplacement [../pitr_backup.sh](../pitr_backup.sh) (seules 2 lignes de commentaire final diffèrent).
 
-La stratégie de sauvegarde repose sur l'utilisation de mongodump pour créer des copies de vos bases de données. Nous distinguons deux types de sauvegardes : complètes et incrémentielles, s'appuyant sur le journal d'opérations (oplog) de MongoDB.
+## 1. Stratégie de Sauvegarde MongoDB
 
-### **1.1. 💡 Concepts Clés**
+La stratégie s'appuie sur `mongodump` et sur le journal des opérations (`oplog`) d'un Replica Set afin de combiner sauvegardes complètes (`full`) et incrémentielles (`incremental`).
 
-* **Sauvegarde Complète (Full Backup)** : C'est une copie intégrale de toutes les données d'une base de données (ou de toutes les bases) à un instant "T". Elle sert de point de départ pour toute restauration.  
-* **Sauvegarde Incrémentielle (Incremental Backup)** : Elle ne contient que les modifications (insertions, mises à jour, suppressions) qui se sont produites depuis la dernière sauvegarde (complète ou incrémentielle). Pour MongoDB, cela est réalisé en capturant une partie de l'oplog.  
-* **Oplog (Operation Log)** : C'est un journal spécial dans MongoDB qui enregistre toutes les opérations d'écriture effectuées sur la base de données. Il est essentiel pour la réplication et, dans notre cas, pour les sauvegardes incrémentielles. Il est activé par défaut sur les replica sets.
+### 1.1. Concepts Clés
 
-### **1.2. 📜 Le Script de Sauvegarde (mongodb\_backup.sh)**
+* **Sauvegarde Complète (`full`)** : Copie intégrale des bases ciblées servant de socle à la restauration.
+* **Sauvegarde Incrémentielle (`incremental`)** : Capture des écritures survenues dans l'oplog (`local.oplog.rs`) depuis le dernier horodatage enregistré.
+* **Oplog (`local.oplog.rs`)** : Journal circulaire présent sur les Replica Sets enregistrant chaque écriture idempotente.
 
-Ce script automatise la création et la gestion des sauvegardes.
+### 1.2. Script de Sauvegarde (`mongo_backup.sh`)
 
-#### **1.2.1. Fonctionnement de la Sauvegarde Complète (full)**
+#### Sauvegarde Complète (`./mongo_backup.sh full`)
 
-Lorsque vous exécutez le script avec l'argument full (./mongodb\_backup.sh full), les étapes suivantes sont réalisées :
+```bash
+bash ./mongo_backup.sh full
+```
 
-1. **Création du Répertoire** : Un nouveau répertoire est créé sous BACKUP\_DIR/full/ avec un horodatage (YYYYMMDD\_HHmmss) comme nom (ex: /data/mongodb\_backups/full/20240707\_103000).  
-2. **Capture du Timestamp Oplog Initial** : Avant de lancer le mongodump, le script interroge l'oplog pour obtenir son timestamp actuel. Ce timestamp est crucial car il marque le point de départ des futures sauvegardes incrémentielles. Il est enregistré dans un fichier oplog\_start\_timestamp.txt à l'intérieur du répertoire de la sauvegarde complète.  
-3. **Exécution de mongodump** : La commande mongodump est exécutée pour exporter toutes les données de la base de données (ou des bases spécifiées par DB\_NAME) vers le répertoire nouvellement créé.  
-4. **Mise à Jour du Fichier de Référence Oplog** : Le timestamp de l'oplog capturé à l'étape 2 est copié dans le fichier oplog\_timestamp.txt à la racine de BACKUP\_DIR. Ce fichier servira de référence pour la prochaine sauvegarde incrémentielle.  
-5. **Rotation des Sauvegardes** : Les anciennes sauvegardes complètes (plus anciennes que FULL\_BACKUP\_RETENTION jours) sont supprimées pour gérer l'espace disque.
+1. Crée un dossier daté sous `$BACKUP_DIR/full/YYYYMMDD_HHmmss`.
+2. Capture le timestamp oplog courant dans `oplog_start_timestamp.txt` à l'intérieur du dossier complet.
+3. Exécute `mongodump` vers ce dossier (toutes les bases si `DB_NAME=""`).
+4. Met à jour `$BACKUP_DIR/oplog_timestamp.txt` comme référence pour la prochaine sauvegarde incrémentielle.
+5. Purge les sauvegardes complètes dépassant `FULL_BACKUP_RETENTION` jours (défaut `7`).
 
-#### **1.2.2. Fonctionnement de la Sauvegarde Incrémentielle (incremental)**
+#### Sauvegarde Incrémentielle (`./mongo_backup.sh incremental`)
 
-Lorsque vous exécutez le script avec l'argument incremental (./mongodb\_backup.sh incremental), voici ce qui se passe :
+```bash
+bash ./mongo_backup.sh incremental
+```
 
-1. **Vérification du Timestamp Oplog** : Le script lit le dernier timestamp de l'oplog enregistré dans oplog\_timestamp.txt. C'est le point à partir duquel les nouvelles modifications doivent être capturées. **Une sauvegarde complète doit avoir été exécutée au préalable pour initialiser ce fichier.**  
-2. **Identification de la Sauvegarde Complète de Référence** : Le script trouve la dernière sauvegarde complète effectuée. Les sauvegardes incrémentielles sont stockées dans un sous-répertoire du répertoire incremental qui porte le même nom que le répertoire de la sauvegarde complète de référence (ex: /data/mongodb\_backups/incremental/20240707\_103000/).  
-3. **Création du Répertoire Incrémentiel** : Un nouveau répertoire est créé sous le répertoire de la sauvegarde complète de référence, avec un préfixe inc\_ et un horodatage (ex: /data/mongodb\_backups/incremental/20240707\_103000/inc\_20240707\_110000/).  
-4. **Exécution de mongodump \--oplogLimit** : La commande mongodump est exécutée avec l'option \--oplogLimit en utilisant le timestamp de l'oplog lu précédemment. Cela indique à mongodump de n'exporter que les opérations de l'oplog qui se sont produites *après* ce timestamp. Le résultat est un fichier oplog.bson contenant ces opérations.  
-5. **Mise à Jour du Nouveau Timestamp Oplog** : Après la sauvegarde incrémentielle, un nouveau timestamp de l'oplog est capturé (le timestamp actuel du serveur) et mis à jour dans oplog\_timestamp.txt. Ce sera le point de départ pour la *prochaine* sauvegarde incrémentielle.  
-6. **Rotation des Sauvegardes** : Les anciennes sauvegardes incrémentielles (plus anciennes que INCREMENTAL\_BACKUP\_RETENTION jours) sont supprimées pour la sauvegarde complète de référence correspondante.
+1. Vérifie la présence du timestamp précédent dans `$BACKUP_DIR/oplog_timestamp.txt`.
+2. Localise la dernière sauvegarde complète sous `$BACKUP_DIR/full/`.
+3. Crée un sous-dossier `$BACKUP_DIR/incremental/<FULL_TS>/inc_YYYYMMDD_HHmmss/`.
+4. Exécute `mongodump` sur `local.oplog.rs` à partir du dernier timestamp capturé.
+5. Enregistre le nouveau timestamp dans `oplog_timestamp.txt` et purge les incrémentielles dépassant `INCREMENTAL_BACKUP_RETENTION` jours (défaut `30`).
 
-### **1.3. 📁 Structure des Répertoires de Sauvegarde**
+### 1.3. Organisation des Répertoires de Sauvegarde
 
-/data/mongodb\_backups/  
-├── full/  
-│   ├── 20240707\_103000/          \# Sauvegarde complète du 7 juillet 2024 à 10h30  
-│   │   ├── \<dump\_de\_la\_db\>/      \# Contenu de la base de données  
-│   │   └── oplog\_start\_timestamp.txt \# Timestamp de l'oplog au début de cette full  
-│   ├── 20240708\_020000/          \# Sauvegarde complète du 8 juillet 2024 à 2h00  
-│   │   ├── ...  
-│   └── ...  
-└── incremental/  
-    ├── 20240707\_103000/          \# Incrémentielles basées sur la full du 7 juillet 10h30  
-    │   ├── inc\_20240707\_110000/  \# Incrémentielle du 7 juillet 11h00  
-    │   │   └── oplog.bson        \# Fichier d'oplog  
-    │   ├── inc\_20240707\_120000/  \# Incrémentielle du 7 juillet 12h00  
-    │   │   └── oplog.bson  
-    │   └── ...  
-    ├── 20240708\_020000/          \# Incrémentielles basées sur la full du 8 juillet 2h00  
-    │   ├── inc\_20240708\_030000/  
-    │   │   └── oplog.bson  
-    │   └── ...  
-    └── ...
+```mermaid
+flowchart TD
+    ROOT["/data/mongodb_backups/"] --> FULL["full/<FULL_TS>/ (dump DB + oplog_start_timestamp.txt)"]
+    ROOT --> INC["incremental/<FULL_TS>/inc_<INC_TS>/ (oplog.bson)"]
+    ROOT --> LOG["mongodb_backup.log + oplog_timestamp.txt"]
+```
 
-mongodb\_backup.log               \# Fichier de log des opérations de sauvegarde  
-oplog\_timestamp.txt              \# Fichier temporaire pour le dernier timestamp d'oplog utilisé
+## 2. Stratégie de Restauration MongoDB (`mongo_restore.sh`)
 
-## **2\. 🔄 Stratégie de Restauration MongoDB**
+La restauration rejoue d'abord la sauvegarde complète cible, puis applique dans l'ordre chronologique toutes les incrémentielles rattachées à ce socle :
 
-La restauration d'une base de données à partir de sauvegardes complètes et incrémentielles est un processus en deux étapes : d'abord la restauration de la base complète, puis l'application des modifications incrémentielles.
+```bash
+bash ./mongo_restore.sh 20240707_103000
+```
 
-### **2.1. 💡 Concept de Restauration Incrémentielle**
+1. **Étape 1 : Restauration complète (`--drop`)** : Exécute `mongorestore --drop` depuis `/data/mongodb_backups/full/<FULL_TS>` pour remplacer les collections existantes avant relecture.
 
-La restauration incrémentielle ne consiste pas à "fusionner" des fichiers, mais à "rejouer" les opérations. Pour restaurer à un certain point dans le temps, il faut :
+```bash
+mongorestore --host <host> --port <port> --drop /data/mongodb_backups/full/<FULL_TS>
+```
 
-1. Rétablir une sauvegarde complète qui précède ou inclut ce point.  
-2. Appliquer ensuite, dans l'ordre chronologique, tous les dumps d'oplog incrémentiels pertinents jusqu'au point de restauration désiré.
+2. **Étape 2 : Replay séquentiel des incrémentielles (`--oplogReplay`)** : Parcourt les dossiers `inc_YYYYMMDD_HHmmss` triés par date sous `/data/mongodb_backups/incremental/<FULL_TS>/` et rejoue chaque `oplog.bson` :
 
-### **2.2. 📜 Le Script de Restauration (mongodb\_restore.sh)**
+```bash
+mongorestore --host <host> --port <port> --oplogReplay /data/mongodb_backups/incremental/<FULL_TS>/inc_<INC_TS>/oplog.bson
+```
 
-Ce script automatise le processus de restauration incrémentielle.
+### Précautions Opérationnelles
 
-#### **2.2.1. Processus de Restauration**
-
-Le script prend en argument le nom du répertoire de la sauvegarde complète à partir de laquelle vous souhaitez restaurer (ex: 20240707\_103000).
-
-1. **Étape 1: Restauration de la Sauvegarde Complète**  
-   * Le script localise le répertoire de la sauvegarde complète spécifiée (ex: /data/mongodb\_backups/full/20240707\_103000).  
-   * Il exécute mongorestore avec l'option \--drop. Cette option est **très importante** car elle **supprime toutes les collections existantes** dans la base de données cible avant de restaurer les données de la sauvegarde complète. Cela garantit une base propre avant l'application des changements.  
-   * La base de données est alors dans l'état exact où elle était au moment de la sauvegarde complète.
-
-mongorestore \--host \<host\> \--port \<port\> \--drop /path/to/full\_backup\_dir
-
-2. **Étape 2: Application des Sauvegardes Incrémentielles**  
-   * Le script identifie le répertoire des sauvegardes incrémentielles associées à la sauvegarde complète restaurée (ex: /data/mongodb\_backups/incremental/20240707\_103000/).  
-   * Il trouve tous les sous-répertoires inc\_YYYYMMDD\_HHmmss à l'intérieur, qui contiennent les fichiers oplog.bson.  
-   * **Ordonnancement Crucial** : Les répertoires incrémentiels sont triés chronologiquement pour garantir que les opérations sont appliquées dans le bon ordre.  
-   * Pour chaque fichier oplog.bson trouvé, le script exécute mongorestore avec l'option \--oplogReplay. Cette option indique à mongorestore de rejouer les opérations contenues dans l'oplog sur la base de données cible.
-
-mongorestore \--host \<host\> \--port \<port\> \--oplogReplay /path/to/incremental\_oplog.bson  
-Chaque oplog.bson est appliqué séquentiellement, mettant à jour la base de données avec les changements survenus entre les points de sauvegarde.
-
-#### **2.2.2. Fichier de Log de Restauration**
-
-mongodb\_restore.log              \# Fichier de log des opérations de restauration
-
-### **2.3. ⚠️ Considérations Importantes pour la Restauration**
-
-* **Prudence avec \--drop** : L'option \--drop efface les données existantes. Utilisez-la avec la plus grande prudence, idéalement sur un environnement de test ou une base de données dédiée à la restauration.  
-* **Intégrité de l'Oplog** : La réussite de la restauration incrémentielle dépend entièrement de l'intégrité et de la complétude des fichiers oplog.bson. Toute corruption ou fichier manquant peut entraîner une restauration incomplète ou une base de données incohérente.  
-* **Point-in-Time Recovery** : Ce script restaure au dernier point incrémentiel disponible. Pour une restauration à un point précis dans le temps (par exemple, juste avant une erreur), il faudrait une logique plus avancée pour déterminer le dernier oplog.bson à appliquer et potentiellement utiliser \--oplogLimit sur ce dernier fichier avec un timestamp spécifique.  
-* **Testez Toujours** : Avant d'implémenter ces scripts en production, effectuez des tests de sauvegarde et de restauration exhaustifs sur un environnement de développement ou de staging pour vous assurer qu'ils fonctionnent comme prévu et que les données sont restaurées correctement.  
-* **Authentification** : Assurez-vous que les options d'authentification (MONGO\_RESTORE\_USER, MONGO\_RESTORE\_PASS) sont correctement configurées si votre serveur MongoDB cible le requiert.
-
-Cette documentation devrait vous fournir une compréhension solide de votre système de sauvegarde et de restauration MongoDB. N'hésitez pas si vous avez d'autres questions ou si vous souhaitez approfondir certains aspects \!
+* **Prudence avec `--drop`** : L'option supprime les données cibles existantes. Validez d'abord la procédure sur un environnement de test.
+* **Intégrité des incrémentielles** : Tout dossier `inc_*` manquant ou corrompu rompt la chaîne chronologique jusqu'au point cible.
+* **Authentification** : Décommentez les variables d'identifiants (`MONGO_USER`/`MONGO_PASS` aux lignes `15-16` ou `MONGO_RESTORE_USER`/`MONGO_RESTORE_PASS` aux lignes `15-16`) **et** le bloc conditionnel `AUTH_OPTIONS` (`L84-87` de `mongo_backup.sh` et `L69-72` de `mongo_restore.sh`) ; sinon `AUTH_OPTIONS` reste vide (`""`).
+* **Journalisation** : Les deux scripts écrivent dans `$BACKUP_DIR/mongodb_backup.log` et `$BACKUP_BASE_DIR/mongodb_restore.log`.

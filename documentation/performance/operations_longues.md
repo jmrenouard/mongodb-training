@@ -95,7 +95,7 @@ flowchart TD
     B -->|Durée > seuil| C[Opération longue]
     B -->|planSummary = COLLSCAN| D[Scan complet]
     B -->|waitingForLock = true| E[Opération bloquée]
-    C --> F[Analyser et agir (killOp, index, etc.)]
+    C --> F["Analyser et agir (killOp, index, etc.)"]
     D --> F
     E --> F
 ```

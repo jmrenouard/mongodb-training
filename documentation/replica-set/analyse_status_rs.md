@@ -55,7 +55,7 @@ Le processus observé peut être résumé par le diagramme de flux suivant :
 
 ```mermaid
 graph TD
-    A[rs.initiate()] --> B{Tous les membres démarrent en état SECONDARY};
+    A["rs.initiate()"] --> B{Tous les membres démarrent en état SECONDARY};
     B --> C{Processus d'élection lancé};
     C --> D{localhost:27029 est élu PRIMARY};
     D --> E[État stable: 1 PRIMARY, 2 SECONDARYs];

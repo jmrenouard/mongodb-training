@@ -90,9 +90,9 @@ flowchart LR
     Primary[Primary]
     Secondary[Secondary]
     Arbiter[Arbiter]
-    Primary  Secondary
-    Primary  Arbiter
-    Secondary  Arbiter
+    Primary <--> Secondary
+    Primary <--> Arbiter
+    Secondary <--> Arbiter
 ```
 
 Cette configuration permet de garantir la disponibilité de votre cluster MongoDB tout en limitant les ressources nécessaires, à condition de respecter les bonnes pratiques ci-dessus[1][4][2].
