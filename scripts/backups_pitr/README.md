@@ -72,6 +72,6 @@ mongorestore --host <host> --port <port> --oplogReplay /data/mongodb_backups/inc
 ### Précautions Opérationnelles
 
 * **Prudence avec `--drop`** : L'option supprime les données cibles existantes. Validez d'abord la procédure sur un environnement de test.
-* **Intégrité des incrémentielles** : Tout dossier `inc_*` manquant ou corrompu rompt la chaîne cronologique jusqu'au point cible.
-* **Authentification** : Renseignez `MONGO_USER` / `MONGO_PASS` dans `mongo_backup.sh` et `MONGO_RESTORE_USER` / `MONGO_RESTORE_PASS` dans `mongo_restore.sh` avant exécution sur cluster sécurisé.
+* **Intégrité des incrémentielles** : Tout dossier `inc_*` manquant ou corrompu rompt la chaîne chronologique jusqu'au point cible.
+* **Authentification** : Décommentez les variables d'identifiants (`MONGO_USER`/`MONGO_PASS` aux lignes `15-16` ou `MONGO_RESTORE_USER`/`MONGO_RESTORE_PASS` aux lignes `15-16`) **et** le bloc conditionnel `AUTH_OPTIONS` (`L84-87` de `mongo_backup.sh` et `L69-72` de `mongo_restore.sh`) ; sinon `AUTH_OPTIONS` reste vide (`""`).
 * **Journalisation** : Les deux scripts écrivent dans `$BACKUP_DIR/mongodb_backup.log` et `$BACKUP_BASE_DIR/mongodb_restore.log`.

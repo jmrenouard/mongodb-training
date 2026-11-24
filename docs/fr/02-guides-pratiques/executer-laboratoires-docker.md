@@ -40,7 +40,7 @@ cp docker/sharded/.env_example docker/sharded/.env
 2. Préparez les dossiers de données et le fichier `mongodb-keyfile` :
 
 ```bash
-(cd docker/sharded && bash init-scripts/init-datadir.sh && set -a && source .env && set +a && bash init-scripts/init-keyfile.sh)
+(cd docker/sharded && bash init-scripts/init-datadir.sh && set -a && source .env && set +a && sudo env "MONGO_REPLICA_SET_KEY=$MONGO_REPLICA_SET_KEY" bash init-scripts/init-keyfile.sh)
 ```
 
 3. Validez la définition Compose avec votre fichier d'environnement :
@@ -63,10 +63,10 @@ Affichez la liste des conteneurs actifs de la pile autonome :
 docker compose -f docker/standalone/compose.yaml ps
 ```
 
-Si le cluster shardé tourne, vérifiez l'état de `mongos-router-1` :
+Si le cluster shardé tourne, vérifiez l'état authentifié de `mongos-router-1` :
 
 ```bash
-docker exec mongos-router-1 mongosh --port 27017 --eval "sh.status()"
+(set -a && source docker/sharded/.env && docker exec mongos-router-1 mongosh --port 27017 -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "sh.status()")
 ```
 
 ## Retour Arrière

@@ -27,7 +27,7 @@ bash ./scripts/logical_backup.sh replicaset localhost 27017 admin strongpass adm
 
 ### Run Oplog PITR Backups (`scripts/backups_pitr/mongo_backup.sh`)
 
-1. Edit `BACKUP_DIR`, `MONGO_HOST`, `MONGO_PORT`, `MONGO_USER`, and `MONGO_PASS` in `scripts/backups_pitr/mongo_backup.sh`.
+1. Enable `MONGO_USER`, `MONGO_PASS`, and the `AUTH_OPTIONS` block in `scripts/backups_pitr/mongo_backup.sh`.
 2. Create a baseline full backup first:
 
 ```bash
@@ -60,13 +60,19 @@ cat /data/mongodb_backups/oplog_timestamp.txt
 
 CAUTION: Keep `--drop` off until you confirm the target database because `--drop` deletes stored collections permanently.
 
-1. Restore a logical archive to a target node with `scripts/logical_restore.sh`:
+1. Create `/var/log/mongodb` so log redirection succeeds on line `24` of `scripts/logical_restore.sh`:
+
+```bash
+sudo mkdir -p /var/log/mongodb
+```
+
+2. Restore a logical archive to a target node with `scripts/logical_restore.sh`:
 
 ```bash
 bash ./scripts/logical_restore.sh /var/backups/mongodb/<archive>.tar.gz localhost 27017 admin strongpass admin
 ```
 
-2. Restore a PITR chain from a full backup timestamp with `scripts/backups_pitr/mongo_restore.sh`:
+3. For PITR, enable `MONGO_RESTORE_USER`, `MONGO_RESTORE_PASS`, and `AUTH_OPTIONS` in `scripts/backups_pitr/mongo_restore.sh`, then restore a chain:
 
 ```bash
 bash ./scripts/backups_pitr/mongo_restore.sh <FULL_TIMESTAMP>

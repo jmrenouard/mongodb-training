@@ -27,7 +27,7 @@ bash ./scripts/logical_backup.sh replicaset localhost 27017 admin strongpass adm
 
 ### Exécuter une Sauvegarde PITR (`scripts/backups_pitr/mongo_backup.sh`)
 
-1. Réglez `BACKUP_DIR`, `MONGO_HOST`, `MONGO_PORT`, `MONGO_USER` et `MONGO_PASS` dans `scripts/backups_pitr/mongo_backup.sh`.
+1. Activez `MONGO_USER`, `MONGO_PASS` et le bloc `AUTH_OPTIONS` dans `scripts/backups_pitr/mongo_backup.sh`.
 2. Exécutez une sauvegarde complète initiale :
 
 ```bash
@@ -60,13 +60,19 @@ cat /data/mongodb_backups/oplog_timestamp.txt
 
 ATTENTION: Retirez `--drop` tant que la cible reste incertaine. L'option `--drop` supprime les collections actuelles avant la restauration.
 
-1. Restaurez une archive logique avec `scripts/logical_restore.sh` :
+1. Créez `/var/log/mongodb` pour la redirection de log à la ligne `24` de `scripts/logical_restore.sh` :
+
+```bash
+sudo mkdir -p /var/log/mongodb
+```
+
+2. Restaurez une archive logique avec `scripts/logical_restore.sh` :
 
 ```bash
 bash ./scripts/logical_restore.sh /var/backups/mongodb/<archive>.tar.gz localhost 27017 admin strongpass admin
 ```
 
-2. Restaurez une chaîne PITR depuis un horodatage complet avec `scripts/backups_pitr/mongo_restore.sh` :
+3. Pour PITR, activez `MONGO_RESTORE_USER`, `MONGO_RESTORE_PASS` et `AUTH_OPTIONS` dans `scripts/backups_pitr/mongo_restore.sh`, puis exécutez la restauration :
 
 ```bash
 bash ./scripts/backups_pitr/mongo_restore.sh <FULL_TIMESTAMP>

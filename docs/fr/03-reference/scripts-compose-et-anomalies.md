@@ -23,12 +23,12 @@ Inventaire vérifié des piles Docker, scripts Bash, jeux de données, playbooks
 | `scripts/create_aliases.sh` | `generate_mongo_aliases.sh` | `[USER] [PASS] [AUTH_DB]` | Génère `~/.bashrc_mongodb` selon `/etc/mongod/*.conf` |
 | `scripts/inject_sample_databses.sh` | — | `--repo-url`, `--mongo-db`, `--mongo-collection`, options host/port/auth | Clone un dépôt Git et exécute `mongoimport` (`databses`) |
 | `scripts/logical_backup.sh` | `mongodb_backup.sh` | `<standalone\|replicaset\|sharded> <HOST> <PORT> [USER] [PASS] [AUTH_DB] [ENC_PASS]` | Ligne `26` redirige vers le log avant le `mkdir -p` de la ligne `35` |
-| `scripts/logical_restore.sh` | `mongodb_restore.sh` | `<ARCHIVE> <HOST> <PORT> [USER] [PASS] [AUTH_DB] [ENC_PASS] [--drop]` | Active `--oplogReplay` sur archives `replicaset_*` / `sharded_*` |
-| `scripts/backups_pitr/mongo_backup.sh` | — | `<full\|incremental>` | Sauvegardes PITR oplog sous `/data/mongodb_backups/` |
-| `scripts/backups_pitr/mongo_restore.sh` | — | `<FULL_TIMESTAMP_DIR>` | Rejoue `full` (`--drop`) puis les dossiers `inc_*` triés |
-| `scripts/pitr_backup.sh` | — | `<full\|incremental>` | Copie quasi identique de `scripts/backups_pitr/mongo_backup.sh` |
+| `scripts/logical_restore.sh` | `mongodb_restore.sh` | `<ARCHIVE> <HOST> <PORT> [USER] [PASS] [AUTH_DB] [ENC_PASS] [--drop]` | Ligne `24` écrit `/var/log/mongodb/mongodb_restore.log` sans `mkdir -p`; active `--oplogReplay` sur `replicaset_*` / `sharded_*` |
+| `scripts/backups_pitr/mongo_backup.sh` | — | `<full\|incremental>` | Sauvegardes PITR oplog sous `/data/mongodb_backups/`; bloc `AUTH_OPTIONS` commenté (`L84-87`) |
+| `scripts/backups_pitr/mongo_restore.sh` | — | `<FULL_TIMESTAMP_DIR>` | Rejoue `full` (`--drop`) puis `inc_*` triés; bloc `AUTH_OPTIONS` commenté (`L69-72`) |
+| `scripts/pitr_backup.sh` | — | `<full\|incremental>` | Copie quasi identique de `scripts/backups_pitr/mongo_backup.sh` (`AUTH_OPTIONS` aussi commenté) |
 | `docker/sharded/init-scripts/init-datadir.sh` | — | Sans argument | Crée `data/config1..3`, `shard1-1..3`, `shard2-1..3` |
-| `docker/sharded/init-scripts/init-keyfile.sh` | — | Lit `$MONGO_REPLICA_SET_KEY` | Écrit `./data/keyfile/mongodb-keyfile` (`chmod 400`) |
+| `docker/sharded/init-scripts/init-keyfile.sh` | — | Lit `$MONGO_REPLICA_SET_KEY` | Écrit `./data/keyfile/mongodb-keyfile` (`chmod 600`, `chown 999:999` sous `sudo`) |
 | `docker/sharded/init-scripts/init-cluster.sh` | — | Point d'entrée `mongo-setup` | Attend 30s puis exécute `init-replica-sets.js` et `init-users.js` |
 
 ## Jeux de Données et Playbooks Ansible
@@ -53,6 +53,8 @@ Inventaire vérifié des piles Docker, scripts Bash, jeux de données, playbooks
 | Élevée | `scripts/create_mongos.sh:L230` | Chaîne tronquée provoquant une erreur `unexpected EOF` à `bash -n` |
 | Élevée | `playbooks/config_system.yml:L181` | Indentation à 8 espaces rejetée par `yaml.safe_load` |
 | Élevée | `scripts/logical_backup.sh:L26` | Redirection `tee` appelée avant `mkdir -p` (`L35`) |
+| Élevée | `scripts/logical_restore.sh:L20-24` | Redirection vers `/var/log/mongodb/mongodb_restore.log` sans création de `/var/log/mongodb` |
+| Moyenne | `scripts/backups_pitr/mongo_*.sh` | Blocs conditionnels `AUTH_OPTIONS` (`L84-87`, `L69-72`) commentés même après saisie des identifiants |
 | Moyenne | `docker/sharded/docker-compose.yml:L10-55` | `--auth` commenté sur `config-server-1..3` |
 | Moyenne | `docker/sharded/init-scripts/*.js` | Mots de passe écrits en dur au lieu de lire `process.env` |
 | Faible | `scripts/pitr_backup.sh` | Duplication à 2 commentaires près avec `scripts/backups_pitr/mongo_backup.sh` |
